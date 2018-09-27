@@ -16,6 +16,19 @@
 
 /* Write your solution here */
 
+void fib(int** fib_sequence, int count)
+{
+    *fib_sequence = malloc(sizeof(int) * count);
+
+    int fib1 = 0, fib2 = 1, next;
+    for (int i = 0; i < count; i++)
+    {
+        *(*fib_sequence + i) = fib1;
+        next = fib1 + fib2;
+        fib1 = fib2;
+        fib2 = next;
+    }
+}
 
 int main(int argc, char **argv) {
     /* do not change this main function */

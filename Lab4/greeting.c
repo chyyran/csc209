@@ -38,6 +38,7 @@ int main(int argc, char **argv) {
     char *name = argv[2];
 
     // Your code goes here
+    snprintf(greeting, sizeof(greeting), "%s %s", argv[1], name);
 
 
     printf("%s\n", greeting);

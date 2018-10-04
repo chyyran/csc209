@@ -21,6 +21,17 @@
 
 // Write the function strip_q_marks here
 
+int strip_q_marks(char *s) 
+{
+    int last_loc = strlen(s) - 1;
+    int count = 0;
+    for(int i = last_loc; i > 0; i--) {
+        if (s[i] == '?') { s[i] = '\0'; count++;} else {break;}
+    }
+
+    return count;
+}
+
 
 int main(int argc, char **argv) {
     // Do not change this main function.

@@ -13,6 +13,16 @@
 */
 
 
+int truncate(char* s, int n) 
+{
+    int len = strlen(s);
+    if (len <= n) {
+        return 0;
+    } else {
+        s[n] = '\0';
+    }
+    return len - n;
+} 
 
 int main(int argc, char **argv) {
     /* Do not change the main function */

@@ -23,7 +23,7 @@ void fib(int** fib_sequence, int count)
     int fib1 = 0, fib2 = 1, next;
     for (int i = 0; i < count; i++)
     {
-        *(*fib_sequence + i) = fib1;
+        fib_sequence[0][i] = fib1;
         next = fib1 + fib2;
         fib1 = fib2;
         fib2 = next;

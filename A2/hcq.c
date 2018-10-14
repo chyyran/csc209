@@ -38,6 +38,73 @@ char *strupr(char *s)
     return org;
 }
 
+void free_student(Student *s)
+{
+    free(s->arrival_time);
+    free(s->name);
+    free(s);
+}
+
+int compare_student(Student *s1, Student *s2)
+{
+    return strcmp(s1->name, s2->name);
+}
+
+Student *detach_student(Student **stu_list, Student *s)
+{
+    if (!find_student(*stu_list, s->name))
+        return NULL;
+
+    Student *curr = *stu_list;
+    Student *prev = NULL;
+    // Do the overall first
+    while (curr)
+    {
+        if (!compare_student(curr, s))
+        {
+            if (prev)
+            {
+                prev->next_overall = curr->next_overall;
+            }
+            else
+            {
+                *stu_list = curr->next_overall;
+            }
+        }
+
+        prev = curr;
+        curr = curr->next_overall;
+    }
+
+    curr = s->course->head;
+    prev = NULL;
+
+    while (curr)
+    {
+        if (!compare_student(curr, s))
+        {
+            if (prev)
+            {
+                prev->next_course = curr->next_course;
+            }
+            else
+            {
+                s->course->head = curr->next_course;
+            }
+        }
+
+        prev = curr;
+        curr = curr->next_course;
+
+        if (curr == NULL)
+        {
+            s->course->tail = prev;
+        }
+    }
+
+    return s;
+}
+
 #define malloc panic_malloc
 
 /**
@@ -55,7 +122,6 @@ Student *find_student(Student *stu_list, char *student_name)
     {
         if (!strncmp(next->name, student_name, strlen(student_name)))
         {
-            printf("Student found\n");
             return next;
         }
         next = next->next_overall;
@@ -116,7 +182,7 @@ int add_student(Student **stu_list_ptr, char *student_name, char *course_code,
     *s.arrival_time = time(0);
 
     Student *last_overall = *stu_list_ptr;
-    Student *last_course = *stu_list_ptr;
+    Student *last_course = course->tail;
 
     // Navigate to last overall
     while (last_overall)
@@ -131,35 +197,6 @@ int add_student(Student **stu_list_ptr, char *student_name, char *course_code,
         }
 
         last_overall = last_overall->next_overall;
-    }
-
-    while (last_course)
-    {
-        if (!strncmp(last_course->course->code, course_code, COURSE_CODE_LEN))
-        {
-            if (!last_course->next_course)
-            {
-
-                // last
-                break;
-            }
-            else
-            {
-                // continue on the course path.
-                last_course = last_course->next_course;
-            }
-        }
-        else
-        {
-            // continue if not course
-            last_course = last_course->next_overall;
-        }
-    }
-
-    if (last_course && !strncmp(last_course->course->code, course_code, COURSE_CODE_LEN))
-    {
-        last_course = NULL;
-        // edge case if no course.
     }
 
     Student *student_heap = malloc(sizeof(Student));
@@ -177,6 +214,12 @@ int add_student(Student **stu_list_ptr, char *student_name, char *course_code,
     if (last_course)
     {
         last_course->next_course = student_heap;
+        course->tail = student_heap;
+    }
+    else
+    {
+        course->head = student_heap;
+        course->tail = student_heap;
     }
     return 0;
 }
@@ -189,6 +232,17 @@ int add_student(Student **stu_list_ptr, char *student_name, char *course_code,
  */
 int give_up_waiting(Student **stu_list_ptr, char *student_name)
 {
+    if (!find_student(*stu_list_ptr, student_name))
+        return 1;
+
+    Student *s = detach_student(stu_list_ptr, find_student(*stu_list_ptr, student_name));
+
+    time_t now = time(0);
+    time_t wait = *(s->arrival_time);
+    s->course->bailed++;
+    s->course->wait_time += (now - wait);
+
+    free_student(s);
     return 0;
 }
 
@@ -226,6 +280,14 @@ void add_ta(Ta **ta_list_ptr, char *ta_name)
  */
 void release_current_student(Ta *ta)
 {
+    time_t help_start = *(ta->current_student->arrival_time);
+    time_t total_helped = time(0) - help_start;
+
+    ta->current_student->course->helped++;
+    ta->current_student->course->help_time += total_helped;
+
+    free_student(ta->current_student);
+    ta->current_student = NULL;
 }
 
 /* Remove this Ta from the ta_list and free the associated memory with
@@ -306,8 +368,26 @@ int take_next_course(char *ta_name, Ta *ta_list, Student **stu_list_ptr, char *c
  */
 void print_all_queues(Student *stu_list, Course *courses, int num_courses)
 {
-    //printf("%s: %d in queue\n", var1, var2);
-    //printf("\t%s\n",var3);
+
+    for (int i = 0; i < num_courses; i++)
+    {
+
+        int count = 0;
+        Student *s = courses[i].head;
+        while (s)
+        {
+            count++;
+            s = s->next_course;
+        }
+
+        printf("%s: %d in queue\n", courses[i].code, count);
+        s = courses[i].head;
+        while (s)
+        {
+            printf("\t%s\n", s->name);
+            s = s->next_course;
+        }
+    }
 }
 
 /*
@@ -345,6 +425,7 @@ int stats_by_course(Student *stu_list, char *course_code, Course *courses, int n
     if (!found)
         return 1;
 
+    
     printf("%s:%s \n", found->code, found->description);
     // printf("\t%d: waiting\n", students_waiting);
     // printf("\t%d: being helped currently\n", students_being_helped);

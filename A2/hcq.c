@@ -2,8 +2,46 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <ctype.h>
+
 #include "hcq.h"
 #define INPUT_BUFFER_SIZE 256
+#define COURSE_CODE_LEN 6
+
+/**
+ * ---- Begin Helper Functions ---
+ */
+
+void *panic_malloc(size_t size)
+{
+    void *ptr;
+    if ((ptr = malloc(size)) == NULL) {
+        perror("malloc");
+        exit(1);
+        return NULL;
+    } else {
+        return ptr;
+    }
+}
+
+
+char *strupr(char* s)
+{
+    char *org = s;
+    while (*s)
+    {
+        *s = (char) toupper((char) *s);
+        s++;
+    }
+    return org;
+}
+
+#define malloc panic_malloc
+
+
+/**
+ * ---- End Helper Functions ---
+ */
 
 /*
  * Return a pointer to the struct student with name stu_name
@@ -27,6 +65,14 @@ Ta *find_ta(Ta *ta_list, char *ta_name) {
  *  or NULL if there is no course in the list with this code.
  */
 Course *find_course(Course *courses, int num_courses, char *course_code) {
+
+    for (int i = 0; i < num_courses; i++)
+    {
+        if(!strncmp(courses[i].code, course_code, COURSE_CODE_LEN))
+        {
+            return &courses[i];
+        }
+    }
     return NULL;
 }
     
@@ -202,15 +248,18 @@ int stats_by_course(Student *stu_list, char *course_code, Course *courses, int n
     
     // You MUST not change the following statements or your code 
     //  will fail the testing. 
-/*
+
+    Course *found = find_course(courses, num_courses, strupr(course_code));
+    if (!found) return 1;
+
     printf("%s:%s \n", found->code, found->description);
-    printf("\t%d: waiting\n", students_waiting);
-    printf("\t%d: being helped currently\n", students_being_helped);
+    // printf("\t%d: waiting\n", students_waiting);
+    // printf("\t%d: being helped currently\n", students_being_helped);
     printf("\t%d: already helped\n", found->helped);
     printf("\t%d: gave_up\n", found->bailed);
     printf("\t%f: total time waiting\n", found->wait_time);
     printf("\t%f: total time helping\n", found->help_time);
-*/
+
     return 0;
 }
 
@@ -222,5 +271,62 @@ int stats_by_course(Student *stu_list, char *course_code, Course *courses, int n
  */
 int config_course_list(Course **courselist_ptr, char *config_filename) {
     
-    return 0;
+    FILE *config = fopen(config_filename, "r");
+
+    if (!config) {
+        perror("fopen");
+        exit(1);
+    }
+
+    char buf[INPUT_BUFFER_SIZE];
+
+    fseek(config, 0, SEEK_SET);
+    
+    if (!fgets(buf, INPUT_BUFFER_SIZE, config))
+    {
+        perror("fgets");
+        exit(1);
+    }
+
+    int count = strtol(buf, NULL, 10);
+    
+    Course courses[count];
+
+    for (int i = 0; i < count; i++) 
+    {
+        char code[COURSE_CODE_LEN + 1];
+        char desc[INPUT_BUFFER_SIZE - 7];
+
+
+        if (!fgets(buf, INPUT_BUFFER_SIZE, config)) {
+            break;
+        }
+
+        if (sscanf(buf, "%6s %[^\t\n]", code, desc) == 2)
+        {
+            Course *c = &courses[i];
+
+            // Initialize Course
+            c->bailed = 0;
+            c->head = NULL;
+            c->help_time = 0;
+            c->tail = NULL;
+            c->wait_time = 0;
+            c->helped = 0;
+            c->description = malloc(sizeof(char) * strlen(desc));
+
+            // Copy buffers
+            strcpy(c->code, code);
+            strcpy(c->description, desc);
+            // Flush buffers
+            memset(code, 0, sizeof(code));
+            memset(desc, 0, sizeof(desc)); 
+        
+        }
+    }
+
+    // Copy entire array to heap
+    *courselist_ptr = malloc(sizeof(courses));
+    memcpy(*courselist_ptr, &courses, sizeof(courses));
+    return count;
 }

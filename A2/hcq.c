@@ -31,20 +31,6 @@ void *panic_malloc(size_t size)
 }
 
 /**
- * Mutates a null-terminated string to be uppercase
- */
-char *strupr(char *s)
-{
-    char *org = s;
-    while (*s)
-    {
-        *s = (char)toupper((char)*s);
-        s++;
-    }
-    return org;
-}
-
-/**
  * Frees a heap-alloated student
  */
 void free_student(Student *s)
@@ -226,7 +212,7 @@ int add_student(Student **stu_list_ptr, char *student_name, char *course_code,
                 Course *course_array, int num_courses)
 {
 
-    Course *course = find_course(course_array, num_courses, strupr(course_code));
+    Course *course = find_course(course_array, num_courses, course_code);
     if (!course)
         return 2;
     if (find_student(*stu_list_ptr, student_name))
@@ -444,7 +430,6 @@ int take_next_course(char *ta_name, Ta *ta_list, Student **stu_list_ptr, char *c
     release_current_student(ta);
     if (!find_course(courses, num_courses, course_code)) return 2;
 
-    strupr(course_code);
     Student *s = *stu_list_ptr;
 
     while (s) {
@@ -544,7 +529,7 @@ int stats_by_course(Student *stu_list, char *course_code, Course *courses, int n
     // You MUST not change the following statements or your code
     //  will fail the testing.
 
-    Course *found = find_course(courses, num_courses, strupr(course_code));
+    Course *found = find_course(courses, num_courses, course_code);
     if (!found)
         return 1;
 

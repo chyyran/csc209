@@ -116,7 +116,7 @@ int count_students_waiting(Student *stu_list, char *course_code)
     int count = 0;
     while (s) 
     {
-        if (!strncmp(s->course->code, course_code, strlen(course_code))) {
+        if (!strcmp(s->course->code, course_code)) {
             count++;
         }
         // any student in the queue is still waiting...
@@ -135,7 +135,7 @@ int count_students_being_helped(Ta *ta_list, char *course_code)
     while (t)
     {
         Student *s = t->current_student;
-        if (s && !strncmp(s->course->code, course_code, strlen(course_code))) {
+        if (s && !strcmp(s->course->code, course_code)) {
             count++;
         }
         t = t->next;
@@ -158,7 +158,7 @@ Student *find_student(Student *stu_list, char *student_name)
     Student *next = stu_list;
     while (next)
     {
-        if (!strncmp(next->name, student_name, strlen(student_name)))
+        if (!strcmp(next->name, student_name))
         {
             return next;
         }
@@ -175,7 +175,7 @@ Ta *find_ta(Ta *ta_list, char *ta_name)
     Ta *next = ta_list;
     while (next)
     {
-        if (!strncmp(next->name, ta_name, strlen(ta_name)))
+        if (!strcmp(next->name, ta_name))
         {
             return next;
         }
@@ -192,7 +192,7 @@ Course *find_course(Course *courses, int num_courses, char *course_code)
 
     for (int i = 0; i < num_courses; i++)
     {
-        if (!strncmp(courses[i].code, course_code, COURSE_CODE_LEN))
+        if (!strcmp(courses[i].code, course_code))
         {
             return &courses[i];
         }
@@ -234,7 +234,7 @@ int add_student(Student **stu_list_ptr, char *student_name, char *course_code,
     // Navigate to last overall
     while (last_overall)
     {
-        if (!strncmp(last_overall->name, student_name, strlen(student_name)))
+        if (!strcmp(last_overall->name, student_name))
             return 1;
 
         if (!last_overall->next_overall)
@@ -433,7 +433,7 @@ int take_next_course(char *ta_name, Ta *ta_list, Student **stu_list_ptr, char *c
     Student *s = *stu_list_ptr;
 
     while (s) {
-        if (!strncmp(s->course->code, course_code, strlen(course_code))) break;
+        if (!strcmp(s->course->code, course_code)) break;
         s = s->next_overall;
     }
     

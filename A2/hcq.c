@@ -31,7 +31,7 @@ void *panic_malloc(size_t size)
 }
 
 /**
- * Frees a heap-alloated student
+ * Frees a heap-allocated student
  */
 void free_student(Student *s)
 {

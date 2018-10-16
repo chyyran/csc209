@@ -22,12 +22,8 @@ void *panic_malloc(size_t size)
     {
         perror("malloc");
         exit(1);
-        return NULL;
-    }
-    else
-    {
-        return ptr;
-    }
+    }        
+    return ptr;
 }
 
 /**

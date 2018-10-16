@@ -13,7 +13,13 @@
 
 char *copy(char *dest, const char *src, int capacity) {
 
+    // Clear the destination buffer
+    memset(dest, 0, capacity);
 
+    // Copy string bytes up to capacity - 1
+    memcpy(dest, src, capacity - 1);
+
+    // Last byte is guaranteed to be \0 by memset.
     return dest;
 }
 

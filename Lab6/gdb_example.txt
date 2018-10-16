@@ -1,0 +1,254 @@
+Script started on 2018-10-16 15:45:20-04:00
+[1m[7m%[27m[1m[0m                                                                                                                                                                                      ]2;chyran@chyran-fedora: ~/coding/csc209/chanronn/Lab6]1;..chanronn/Lab6[0m[27m[24m[Jλ ~/coding/csc209/chanronn/Lab6/ [32mmaster*[00m [00m[K[?1h=[?2004hscript./overflow[10Dgcc -Wall -std=gnu99 -g -o overflow overflow.c
+[K[A[87C[46Dmake                                          [1B[K[A[45C./overflow[10Dgcc -Wall -std=gnu99 -g -o overflow overflow.c[1B[K[A[87C[46D./[25P[9C                                   [1B[K[A[51C[10Dls        [8Drm typescript[13Dexit         [9Dgdb overflow[?1l>[?2004l[1B]2;gdb overflow]1;gdbGNU gdb (GDB) Fedora 8.1.1-3.fc28
+Copyright (C) 2018 Free Software Foundation, Inc.
+License GPLv3+: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>
+This is free software: you are free to change and redistribute it.
+There is NO WARRANTY, to the extent permitted by law.  Type "show copying"
+and "show warranty" for details.
+This GDB was configured as "x86_64-redhat-linux-gnu".
+Type "show configuration" for configuration details.
+For bug reporting instructions, please see:
+<http://www.gnu.org/software/gdb/bugs/>.
+Find the GDB manual and other documentation resources online at:
+<http://www.gnu.org/software/gdb/documentation/>.
+For help, type "help".
+Type "apropos word" to search for commands related to "word"...
+Reading symbols from overflow...done.
+(gdb) break [K[K[K[K[K[Kbreak 37
+Breakpoint 1 at 0x40077c: file overflow.c, line 37.
+(gdb) display a
+No symbol "a" in current context.
+(gdb) disp[K[K[K[Krun
+Starting program: /home/chyran/coding/csc209/chanronn/Lab6/overflow 
+Missing separate debuginfos, use: dnf debuginfo-install glibc-2.27-32.fc28.x86_64
+Address of the variables:
+7fffffffd7e0 -> &after[0]
+7fffffffd7e4 -> &after[1]
+7fffffffd7e8 -> &after[2]
+7fffffffd7ec -> &after[3]
+7fffffffd7f0 -> &a[0]
+7fffffffd7f4 -> &a[1]
+7fffffffd7f8 -> &a[2]
+7fffffffd7fc -> &a[3]
+7fffffffd800 -> &before[0]
+7fffffffd804 -> &before[1]
+7fffffffd808 -> &before[2]
+7fffffffd80c -> &before[3]
+7fffffffd818 -> &i
+7fffffffd81c -> &index
+
+Initial values:
+i = 0
+before = {10, 10, 10, 10}
+a = {0, 0, 0, 0}
+after = {10, 10, 10, 10}
+
+
+Breakpoint 1, main () at overflow.c:37
+37	        a[i] = i * 10;
+(gdb) displa [Ky a
+1: a = {0, 0, 0, 0}
+(gdb) display after
+2: after = {10, 10, 10, 10}
+(gdb) display before
+3: before = {10, 10, 10, 10}
+(gdb) display i
+4: i = 0
+(gdb) next
+38	        printf("i = %d\n", i);
+1: a = {0, 0, 0, 0}
+2: after = {10, 10, 10, 10}
+3: before = {10, 10, 10, 10}
+4: i = 0
+(gdb) next
+i = 0
+39	        printf("before = {%d, %d, %d, %d}\n", before[0], before[1], before[2], before[3]);
+1: a = {0, 0, 0, 0}
+2: after = {10, 10, 10, 10}
+3: before = {10, 10, 10, 10}
+4: i = 0
+(gdb) next
+before = {10, 10, 10, 10}
+40	        printf("a = {%d, %d, %d, %d}\n", a[0], a[1], a[2], a[3]);
+1: a = {0, 0, 0, 0}
+2: after = {10, 10, 10, 10}
+3: before = {10, 10, 10, 10}
+4: i = 0
+(gdb) next
+a = {0, 0, 0, 0}
+41	        printf("after = {%d, %d, %d, %d}\n", after[0], after[1], after[2], after[3]);
+1: a = {0, 0, 0, 0}
+2: after = {10, 10, 10, 10}
+3: before = {10, 10, 10, 10}
+4: i = 0
+(gdb) next
+after = {10, 10, 10, 10}
+36	    for (i = 0; i < OVERFLOW; i++) {
+1: a = {0, 0, 0, 0}
+2: after = {10, 10, 10, 10}
+3: before = {10, 10, 10, 10}
+4: i = 0
+(gdb) next
+
+Breakpoint 1, main () at overflow.c:37
+37	        a[i] = i * 10;
+1: a = {0, 0, 0, 0}
+2: after = {10, 10, 10, 10}
+3: before = {10, 10, 10, 10}
+4: i = 1
+(gdb) next
+38	        printf("i = %d\n", i);
+1: a = {0, 10, 0, 0}
+2: after = {10, 10, 10, 10}
+3: before = {10, 10, 10, 10}
+4: i = 1
+(gdb) next
+i = 1
+39	        printf("before = {%d, %d, %d, %d}\n", before[0], before[1], before[2], before[3]);
+1: a = {0, 10, 0, 0}
+2: after = {10, 10, 10, 10}
+3: before = {10, 10, 10, 10}
+4: i = 1
+(gdb) next
+before = {10, 10, 10, 10}
+40	        printf("a = {%d, %d, %d, %d}\n", a[0], a[1], a[2], a[3]);
+1: a = {0, 10, 0, 0}
+2: after = {10, 10, 10, 10}
+3: before = {10, 10, 10, 10}
+4: i = 1
+(gdb) next
+a = {0, 10, 0, 0}
+41	        printf("after = {%d, %d, %d, %d}\n", after[0], after[1], after[2], after[3]);
+1: a = {0, 10, 0, 0}
+2: after = {10, 10, 10, 10}
+3: before = {10, 10, 10, 10}
+4: i = 1
+(gdb) next
+after = {10, 10, 10, 10}
+36	    for (i = 0; i < OVERFLOW; i++) {
+1: a = {0, 10, 0, 0}
+2: after = {10, 10, 10, 10}
+3: before = {10, 10, 10, 10}
+4: i = 1
+(gdb) next
+
+Breakpoint 1, main () at overflow.c:37
+37	        a[i] = i * 10;
+1: a = {0, 10, 0, 0}
+2: after = {10, 10, 10, 10}
+3: before = {10, 10, 10, 10}
+4: i = 2
+(gdb) next
+38	        printf("i = %d\n", i);
+1: a = {0, 10, 20, 0}
+2: after = {10, 10, 10, 10}
+3: before = {10, 10, 10, 10}
+4: i = 2
+(gdb) next
+i = 2
+39	        printf("before = {%d, %d, %d, %d}\n", before[0], before[1], before[2], before[3]);
+1: a = {0, 10, 20, 0}
+2: after = {10, 10, 10, 10}
+3: before = {10, 10, 10, 10}
+4: i = 2
+(gdb) next
+before = {10, 10, 10, 10}
+40	        printf("a = {%d, %d, %d, %d}\n", a[0], a[1], a[2], a[3]);
+1: a = {0, 10, 20, 0}
+2: after = {10, 10, 10, 10}
+3: before = {10, 10, 10, 10}
+4: i = 2
+(gdb) next
+a = {0, 10, 20, 0}
+41	        printf("after = {%d, %d, %d, %d}\n", after[0], after[1], after[2], after[3]);
+1: a = {0, 10, 20, 0}
+2: after = {10, 10, 10, 10}
+3: before = {10, 10, 10, 10}
+4: i = 2
+(gdb) next
+after = {10, 10, 10, 10}
+36	    for (i = 0; i < OVERFLOW; i++) {
+1: a = {0, 10, 20, 0}
+2: after = {10, 10, 10, 10}
+3: before = {10, 10, 10, 10}
+4: i = 2
+(gdb) next
+
+Breakpoint 1, main () at overflow.c:37
+37	        a[i] = i * 10;
+1: a = {0, 10, 20, 0}
+2: after = {10, 10, 10, 10}
+3: before = {10, 10, 10, 10}
+4: i = 3
+(gdb) next
+38	        printf("i = %d\n", i);
+1: a = {0, 10, 20, 30}
+2: after = {10, 10, 10, 10}
+3: before = {10, 10, 10, 10}
+4: i = 3
+(gdb) next
+i = 3
+39	        printf("before = {%d, %d, %d, %d}\n", before[0], before[1], before[2], before[3]);
+1: a = {0, 10, 20, 30}
+2: after = {10, 10, 10, 10}
+3: before = {10, 10, 10, 10}
+4: i = 3
+(gdb) next
+before = {10, 10, 10, 10}
+40	        printf("a = {%d, %d, %d, %d}\n", a[0], a[1], a[2], a[3]);
+1: a = {0, 10, 20, 30}
+2: after = {10, 10, 10, 10}
+3: before = {10, 10, 10, 10}
+4: i = 3
+(gdb) next
+a = {0, 10, 20, 30}
+41	        printf("after = {%d, %d, %d, %d}\n", after[0], after[1], after[2], after[3]);
+1: a = {0, 10, 20, 30}
+2: after = {10, 10, 10, 10}
+3: before = {10, 10, 10, 10}
+4: i = 3
+(gdb) next
+after = {10, 10, 10, 10}
+36	    for (i = 0; i < OVERFLOW; i++) {
+1: a = {0, 10, 20, 30}
+2: after = {10, 10, 10, 10}
+3: before = {10, 10, 10, 10}
+4: i = 3
+(gdb) next
+
+Breakpoint 1, main () at overflow.c:37
+37	        a[i] = i * 10;
+1: a = {0, 10, 20, 30}
+2: after = {10, 10, 10, 10}
+3: before = {10, 10, 10, 10}
+4: i = 4
+(gdb) print &(after[0])
+$1 = (int *) 0x7fffffffd7e0
+(gdb) print &(after[0])[1P[0])[1P[0])[1P[0])[1P[0])
+$2 = (int *) 0x7fffffffd7f0
+(gdb) print &(a[0])[C[C[1P[0])b[0])e[0])f[0])o[0])r[0])e[0])
+$3 = (int *) 0x7fffffffd800
+(gdb) print &(before[0])[5Pa[0])fter[0])[C[C[C[C[C[Cnext[K
+38	        printf("i = %d\n", i);
+1: a = {0, 10, 20, 30}
+2: after = {10, 10, 10, 10}
+3: before = {40, 10, 10, 10}
+4: i = 4
+(gdb) nextprint &(before[0])[5Pa[0])[1P])4])
+$4 = (int *) 0x7fffffffd800
+(gdb) print &(a[4])[C[C[C[C[C[Cnext[Kprint &(a[4])[1P[4])b[4])e[4])f[4])o[4])r[4])e[4])
+$5 = (int *) 0x7fffffffd810
+(gdb) print &(before[4])[1P])0])
+$6 = (int *) 0x7fffffffd800
+(gdb) quit[K[K[K[Kexit
+Undefined command: "exit".  Try "help".
+(gdb) e[Kquit
+A debugging session is active.
+
+	Inferior 1 [process 6956] will be killed.
+
+Quit anyway? (y or n) y
+[1m[7m%[27m[1m[0m                                                                                                                                                                                      ]2;chyran@chyran-fedora: ~/coding/csc209/chanronn/Lab6]1;..chanronn/Lab6[0m[27m[24m[Jλ ~/coding/csc209/chanronn/Lab6/ [32mmaster*[00m [00m[K[?1h=[?2004heexit[?1l>[?2004l
+]2;exit]1;exit
+Script done on 2018-10-16 15:47:23-04:00

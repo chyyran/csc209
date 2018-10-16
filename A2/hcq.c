@@ -12,6 +12,9 @@
  * ---- Begin Helper Functions ---
  */
 
+/**
+ * A malloc that panics and quits on on ENOMEM 
+ */
 void *panic_malloc(size_t size)
 {
     void *ptr;
@@ -27,6 +30,9 @@ void *panic_malloc(size_t size)
     }
 }
 
+/**
+ * Mutates a null-terminated string to be uppercase
+ */
 char *strupr(char *s)
 {
     char *org = s;
@@ -38,6 +44,9 @@ char *strupr(char *s)
     return org;
 }
 
+/**
+ * Frees a heap-alloated student
+ */
 void free_student(Student *s)
 {
     free(s->arrival_time);
@@ -50,8 +59,17 @@ int compare_student(Student *s1, Student *s2)
     return strcmp(s1->name, s2->name);
 }
 
+/**
+ * Detaches a student from the queue
+ * However, this does not remove the pointer to
+ * the next student in the linked list in the overall queue.
+ * 
+ * If the student does not exist, returns NULL.
+ */
 Student *detach_student(Student **stu_list, Student *s)
 {
+    if (!s)
+        return NULL;
     if (!find_student(*stu_list, s->name))
         return NULL;
 
@@ -105,6 +123,40 @@ Student *detach_student(Student **stu_list, Student *s)
     return s;
 }
 
+
+int count_students_waiting(Student *stu_list, char *course_code)
+{
+    Student *s = stu_list;
+    int count = 0;
+    while (s) 
+    {
+        if (!strncmp(s->course->code, course_code, strlen(course_code))) {
+            count++;
+        }
+        // any student in the queue is still waiting...
+        s = s->next_overall;
+    }
+
+    return count;
+}
+
+
+int count_students_being_helped(Ta *ta_list, char *course_code)
+{
+    Ta *t = ta_list;
+    int count = 0;
+
+    while (t)
+    {
+        Student *s = t->current_student;
+        if (s && !strncmp(s->course->code, course_code, strlen(course_code))) {
+            count++;
+        }
+        t = t->next;
+    }
+    return count;
+}
+
 #define malloc panic_malloc
 
 /**
@@ -134,6 +186,15 @@ Student *find_student(Student *stu_list, char *student_name)
  */
 Ta *find_ta(Ta *ta_list, char *ta_name)
 {
+    Ta *next = ta_list;
+    while (next)
+    {
+        if (!strncmp(next->name, ta_name, strlen(ta_name)))
+        {
+            return next;
+        }
+        next = next->next;
+    }
     return NULL;
 }
 
@@ -280,6 +341,9 @@ void add_ta(Ta **ta_list_ptr, char *ta_name)
  */
 void release_current_student(Ta *ta)
 {
+    if (!ta->current_student)
+        return;
+
     time_t help_start = *(ta->current_student->arrival_time);
     time_t total_helped = time(0) - help_start;
 
@@ -342,6 +406,22 @@ int remove_ta(Ta **ta_list_ptr, char *ta_name)
  */
 int take_next_overall(char *ta_name, Ta *ta_list, Student **stu_list_ptr)
 {
+    Ta *ta;
+    if (!(ta = find_ta(ta_list, ta_name)))
+        return 1;
+
+    Student *s = detach_student(stu_list_ptr, *stu_list_ptr);
+
+    release_current_student(ta);
+
+    if (s)
+    {
+        time_t now = time(0);
+        time_t wait = *(s->arrival_time);
+        s->course->wait_time += (now - wait);
+    }
+
+    ta->current_student = s;
 
     return 0;
 }
@@ -356,6 +436,33 @@ int take_next_overall(char *ta_name, Ta *ta_list, Student **stu_list_ptr)
  */
 int take_next_course(char *ta_name, Ta *ta_list, Student **stu_list_ptr, char *course_code, Course *courses, int num_courses)
 {
+
+    Ta *ta;
+    if (!(ta = find_ta(ta_list, ta_name)))
+        return 1;
+
+    release_current_student(ta);
+    if (!find_course(courses, num_courses, course_code)) return 2;
+
+    strupr(course_code);
+    Student *s = *stu_list_ptr;
+
+    while (s) {
+        if (!strncmp(s->course->code, course_code, strlen(course_code))) break;
+        s = s->next_overall;
+    }
+    
+    s = detach_student(stu_list_ptr, s);
+
+
+    if (s)
+    {
+        time_t now = time(0);
+        time_t wait = *(s->arrival_time);
+        s->course->wait_time += (now - wait);
+    }
+
+    ta->current_student = s;
 
     return 0;
 }
@@ -396,9 +503,25 @@ void print_all_queues(Student *stu_list, Course *courses, int num_courses)
  */
 void print_currently_serving(Ta *ta_list)
 {
-    //printf("No TAs are in the help centre.\n");
-    //printf("TA: %s is serving %s from %s\n",i var1, var2);
-    //printf("TA: %s has no student\n", var3);
+    if (!ta_list)
+    {
+        printf("No TAs are in the help centre.\n");
+        return;
+    }
+
+    while (ta_list)
+    {
+        if (ta_list->current_student)
+        {
+            printf("TA: %s is serving %s from %s\n", ta_list->name, ta_list->current_student->name, ta_list->current_student->course->code);
+        }
+        else
+        {
+            printf("TA: %s has no student\n", ta_list->name);
+        }
+
+        ta_list = ta_list->next;
+    }
 }
 
 /*  list all students in queue (for testing and debugging)
@@ -425,10 +548,12 @@ int stats_by_course(Student *stu_list, char *course_code, Course *courses, int n
     if (!found)
         return 1;
 
-    
+    int students_waiting = count_students_waiting(stu_list, course_code);
+    int students_being_helped = count_students_being_helped(ta_list, course_code);
+
     printf("%s:%s \n", found->code, found->description);
-    // printf("\t%d: waiting\n", students_waiting);
-    // printf("\t%d: being helped currently\n", students_being_helped);
+    printf("\t%d: waiting\n", students_waiting);
+    printf("\t%d: being helped currently\n", students_being_helped);
     printf("\t%d: already helped\n", found->helped);
     printf("\t%d: gave_up\n", found->bailed);
     printf("\t%f: total time waiting\n", found->wait_time);

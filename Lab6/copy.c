@@ -17,8 +17,11 @@ char *copy(char *dest, const char *src, int capacity) {
     memset(dest, 0, capacity);
 
     // Copy string bytes up to capacity - 1
-    memcpy(dest, src, capacity - 1);
 
+    for (int i = 0; i < capacity - 1 && src; i++, src++)
+    {  
+        dest[i] = *src;
+    }
     // Last byte is guaranteed to be \0 by memset.
     return dest;
 }

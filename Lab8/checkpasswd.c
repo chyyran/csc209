@@ -79,7 +79,6 @@ int main(void)
                 printf(SUCCESS);
                 break;
             case 1:
-                printf("ERROR\n");
                 break;
             case 2:
                 printf(INVALID);

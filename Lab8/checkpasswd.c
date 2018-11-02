@@ -58,9 +58,7 @@ int main(void)
         close(pipefd[1]);
         dup2(pipefd[0], STDIN_FILENO);
         close(pipefd[0]);
-        int pipefd2[2];
-        pipe(pipefd2);
-
+        
         pid_t _pid = fork();
 
         if (_pid < 0)

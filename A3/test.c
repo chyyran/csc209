@@ -43,7 +43,7 @@ int main(int argc, char **argv) {
     // for (int i = 0; i < MAXFILES; i++) {
     //     printf("%s", filenames[i]);
     // }  
-    FreqRecord *f = get_word("four", head, filenames);
+    FreqRecord *f = get_word("writer", head, filenames);
 
     print_freq_records(f);
 

@@ -78,27 +78,38 @@ void print_freq_records(FreqRecord *frp)
 */
 void run_worker(char *dirname, int in, int out)
 {
+   
+    char *listfile = malloc(sizeof(char) * (strlen(dirname) + strlen("/index") + 0x20));
+    char *namefile = malloc(sizeof(char) * (strlen(dirname) + strlen("/filenames") + 0x20));
+
+    sprintf(listfile, "%s/%s\0", dirname, "index");
+    sprintf(namefile, "%s/%s\0", dirname, "filenames");
+
     Node *head = NULL;
     char **filenames = init_filenames();
-    char *listfile = malloc(sizeof(char) * (strlen(dirname) + strlen("/index" + 1)));
-    char *namefile = malloc(sizeof(char) * (strlen(dirname) + strlen("/filenames" + 1)));
-
-    sprintf(listfile, "%s/%s", dirname, "index");
-    sprintf(namefile, "%s/%s", dirname, "filenames");
 
     read_list(listfile, namefile, &head, filenames);
 
-    int readbytes;
-    char buf[32];
+    int readbytes = 0;
+    char buf[MAXWORD];
+    memset(buf, 0, MAXWORD);
 
-    while ((readbytes = read(in, buf, MAXWORD)) == MAXWORD)
+    // We may re-use the sentinel
+    const FreqRecord sentinel = {0, ""};
+
+    while ((readbytes = read(in, buf, MAXWORD)) <= MAXWORD && readbytes != 0)
     {
         int i = 0;
-        FreqRecord sentinel = {0, ""};
         FreqRecord *records = get_word(buf, head, filenames);
         while (records != NULL && records[i].freq != 0) {
             write(out, &records[i], sizeof(FreqRecord));
+            printf("\n%d: %s\n", records[i].freq, records[i].filename);
+            i++;
         }
+
+        memset(buf, 0, MAXWORD); // better safe than sorry, flush the buffer.
+
+        // write the sentinel
         write(out, &sentinel, sizeof(FreqRecord));
         free(records);
     }

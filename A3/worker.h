@@ -53,6 +53,11 @@ FreqRecord *get_record(MasterArray *array, int i);
 typedef struct worker_s Worker;
 
 /**
+ * Handles when a worker has data ready.
+ */
+typedef void (*WorkerDataReadyHandler)(Worker *w);
+
+/**
  * Creates a heap-allocated worker for the given directory.
  * 
  * Workers are not executed until called on by worker_run,
@@ -84,8 +89,27 @@ Worker *worker_create(const char *dirname);
  * 
  * To stop this worker, send an EOF or close the underlying write pipe
  * by calling worker_close_write.
+ * 
+ * This method returns the PID of the spawned process that the loop is
+ * running on.
  */
-void worker_run(const Worker *w);
+int worker_start_run(const Worker *w);
+
+/**
+ * Synchronously begins to poll the given worker array for data.
+ * When data is ready to be read from a given worker, the
+ * given handler will be called synchronously on the polling
+ * process on that worker.
+ * 
+ * Note it is not guaranteed that the worker will be writeable
+ * when the handler is called, however, it shall be guaranteed that
+ * the worker be readable.
+ * 
+ * This method takes ownership of the given workers.
+ * When all workers have returned a sentinel, this method
+ * will return, and all workers in the array will be freed.
+ */
+void workers_start_poll(Worker **ws, const WorkerDataReadyHandler handler);
 
 /**
  * Frees the worker, releasing all memory and file descriptors.

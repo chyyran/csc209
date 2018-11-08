@@ -6,7 +6,7 @@
 
 #define MAXWORKERS 10
 
-#include <sys/select.h>
+#include <sys/poll.h>
 
 // This data structure is used by the workers to prepare the output
 // to be sent to the master process.
@@ -52,6 +52,8 @@ FreqRecord *get_record(MasterArray *array, int i);
  */
 typedef struct worker_s Worker;
 
+typedef struct workerpoll_s WorkerPoll;
+
 /**
  * Handles when a worker has data ready.
  */
@@ -61,7 +63,18 @@ typedef void (*WorkerDataReadyHandler)(Worker *w);
  * Creates a heap-allocated worker for the given directory.
  * 
  * Workers are not executed until called on by worker_run,
- * and read/write pipes are automatically opened for them.
+ * and two pairs of read/write pipes are automatically opened,
+ * one pair for receiving (recv) data, and one pair for sending (send) 
+ * data to the worker.
+ * 
+ * The write end of the recv pipe is never accessible to the caller,
+ * nor is the read end of the send pipe. However, these pipes
+ * will remain open until the corresponding worker_close_* API
+ * is called for each of the 4 pipe ends.
+ * 
+ * In any case, the opened pipes are not intended for direct usage.
+ * Instead, data can be sent and received through the worker_send
+ * and worker_recv APIs.
  * 
  * Workers own and manage their own resources, including the 
  * opened pipes and a small write buffer used for writing data
@@ -79,10 +92,8 @@ Worker *worker_create(const char *dirname);
 /**
  * Asynchronously begins the run loop for this worker. The worker will 
  * have its pipes remained open for write and read from the calling 
- * process/thread. 
- * 
- * Use the worker_close_* APIs to properly close the correct pipe on the 
- * calling process.
+ * process/thread, except for those being used by the spawned process,
+ * which will be closed in the calling process.
  * 
  * Within the spawned process where the run loop executes,
  * the worker will be closed for writes.
@@ -93,23 +104,39 @@ Worker *worker_create(const char *dirname);
  * This method returns the PID of the spawned process that the loop is
  * running on.
  */
-int worker_start_run(const Worker *w);
+int worker_start_run(Worker *w);
 
 /**
- * Synchronously begins to poll the given worker array for data.
- * When data is ready to be read from a given worker, the
- * given handler will be called synchronously on the polling
- * process on that worker.
- * 
- * Note it is not guaranteed that the worker will be writeable
- * when the handler is called, however, it shall be guaranteed that
- * the worker be readable.
- * 
- * This method takes ownership of the given workers.
- * When all workers have returned a sentinel, this method
- * will return, and all workers in the array will be freed.
+ * Creates a worker poll, parallel to the provided worker array.
  */
-void workers_start_poll(Worker **ws, const WorkerDataReadyHandler handler);
+WorkerPoll *worker_create_poll(Worker **ws, int n);
+
+/**
+ * Poll the given WorkerPoll for available recv reads.
+ * 
+ * When data is ready to be read from a given worker, this method
+ * will return and modify the given WorkerPoll with 
+ * new status.
+ *
+ * The polling timeout is set to 500ms; this function will
+ * return before or after 500ms.
+ * 
+ * This method returns the same value as the underlying
+ * poll call.
+ * 
+ * After this method returns, call worker_check_after_poll
+ * to determine the new status of the workers.
+
+ */
+int workers_poll(WorkerPoll *w);
+
+/**
+ * Checks the status of workers after polled.
+ * Returns:
+ *  0 if reading from this worker will not block (perhaps data is available).
+ *  1 if reading from this worker will block (no data available).
+ */
+int worker_check_after_poll(const WorkerPoll *w, int i);
 
 /**
  * Frees the worker, releasing all memory and file descriptors.
@@ -117,16 +144,28 @@ void workers_start_poll(Worker **ws, const WorkerDataReadyHandler handler);
 void worker_free(Worker *w);
 
 /**
- * Closes the worker for writes on this process.
+ * Closes the worker for send writes on this process.
  * Once closed, the underlying pipe can never be reopened.
  */
-void worker_close_write(Worker *w);
+void worker_close_send_write(Worker *w);
 
 /**
- * Closes the worker for reads on this process.
+ * Closes the worker for send reads on this process.
  * Once closed, the underlying pipe can never be reopened.
  */
-void worker_close_read(Worker *w);
+void worker_close_send_read(Worker *w);
+
+/**
+ * Closes the worker for recv writes on this process.
+ * Once closed, the underlying pipe can never be reopened.
+ */
+void worker_close_recv_write(Worker *w);
+
+/**
+ * Closes the worker for recv reads on this process.
+ * Once closed, the underlying pipe can never be reopened.
+ */
+void worker_close_recv_read(Worker *w);
 
 /**
  * Send a word to the given worker.
@@ -141,7 +180,7 @@ void worker_close_read(Worker *w);
  * due to reusing an underlying buffer for the write.
  * 
  * If the pipe has been closed previously by 
- * worker_close_write, this method returns 0.
+ * worker_close_send_write, this method returns 0.
  * 
  * To avoid confusion, this method is intentionally named
  * worker_send instead of worker_write to indicate that
@@ -158,7 +197,7 @@ ssize_t worker_send(Worker *w, const char *word);
  * read from the pipe
  * 
  * If the pipe has been closed previously by 
- * worker_close_read this method returns 0.
+ * worker_close_recv_read this method returns 0.
  * 
  * To avoid confusion, this method is intentionally named
  * worker_recv instead of worker_read to indicate that

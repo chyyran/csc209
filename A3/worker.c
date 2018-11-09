@@ -9,7 +9,6 @@
 
 const FreqRecord record_sentinel = {0, ""};
 
-
 /**
  * A panic_malloc that panics and quits on on ENOMEM 
  */
@@ -20,10 +19,23 @@ void *panic_malloc(size_t size)
     {
         perror("malloc");
         exit(1);
-    }        
+    }
     return ptr;
 }
 
+/**
+ * A panic_realloc that panics and quits on on ENOMEM 
+ */
+void *panic_realloc(void *__ptr, size_t size)
+{
+    void *ptr;
+    if ((ptr = realloc(__ptr, size)) == NULL)
+    {
+        perror("realloc");
+        exit(1);
+    }
+    return ptr;
+}
 
 /* Complete this function for Task 1. Including fixing this comment.
 * Gets an array of FreqRecords for the given word. 
@@ -31,24 +43,20 @@ void *panic_malloc(size_t size)
 FreqRecord *get_word(char *word, Node *head, char **file_names)
 {
     // Search for the word in the record
-    DEBUG_PRINTF("searching for %s\n", word);
     while (head)
     {
         // if we break
         if (!strncmp(head->word, word, strlen(head->word)))
         {
-            DEBUG_PRINTF("word found!: %s\n", head->word);
             break;
         }
 
-        DEBUG_PRINTF("%s != %s\n", head->word, word);
         head = head->next;
     }
 
     // return an empty sentinel
     if (!head)
     {
-        DEBUG_PRINTF("none found\n");
         FreqRecord *returnRecord = panic_malloc(sizeof(FreqRecord));
         memcpy(returnRecord, &record_sentinel, sizeof(FreqRecord));
         return returnRecord;
@@ -74,7 +82,7 @@ FreqRecord *get_word(char *word, Node *head, char **file_names)
         recordCount++;
 
         // allocate enough space for the next record.
-        returnRecord = realloc(returnRecord, sizeof(FreqRecord) * (recordCount + 1));
+        returnRecord = panic_realloc(returnRecord, sizeof(FreqRecord) * (recordCount + 1));
     }
     memcpy(&returnRecord[recordCount], &record_sentinel, sizeof(FreqRecord));
     return returnRecord;
@@ -139,29 +147,21 @@ void run_worker(char *dirname, int in, int out)
     DEBUG_PRINTF("all gone! %d in: %d, out: %d buf: %s\n", readbytes, in, out, buf);
     free(listfile);
     free(namefile);
-    
+
     return;
 }
 
-// todo: remove pragmas
-#ifndef __GNUC__
-#pragma region master
-#endif
-
 typedef struct master_s
 {
-    FreqRecord records[MAXRECORDS];
+    // Buffer one record for shifting
+    FreqRecord records[MAXRECORDS + 1];
     int count;
-    int next;
 } master_s;
 
 MasterArray *ma_init()
 {
     MasterArray *arr = panic_malloc(sizeof(master_s));
     arr->count = 0;
-
-    // next is incremented before insertion.
-    arr->next = -1;
 
     // clear all freq records.
     memset(arr->records, 0, sizeof(FreqRecord) * MAXRECORDS);
@@ -170,25 +170,56 @@ MasterArray *ma_init()
 
 void ma_insert_record(MasterArray *arr, FreqRecord *frp)
 {
-    // do insertion here...
-    // full
 
-    if (arr->count < MAXRECORDS)
+    DEBUG_PRINTF("inserting %s\n", frp->filename);
+
+    // nothing to do here.
+    if (arr->count == 0)
     {
+        DEBUG_PRINTF("count 0\n");
+
+        arr->records[0] = *frp;
         arr->count++;
-        // do caculation of arr->next here,
-        // for after sort.
-        // this should also ensure the array is sorted, shifting the array
-        // if necessary...
-        // use memmove.
+    }
+    // arr has less than MAXRECORDS records => at least one space remaining.
+    // arr at least one,
+    else if (arr->count < MAXRECORDS)
+    {
+        DEBUG_PRINTF("count not filled yet. %d items in array\n", arr->count);
+        for (int i = 0; i < MAXRECORDS; i++)
+        {
+            if (arr->records[i].freq >= frp->freq)
+                continue;
+
+            DEBUG_PRINTF("shift: Stopped at %d\n", i);
+            // arr->records[i].freq < frp->freq <= arr->records[i - 1].freq
+           
+            memmove(&arr->records[i + 1], &arr->records[i], sizeof(FreqRecord) * (MAXRECORDS - i - 1));
+            arr->records[i] = *frp;
+            arr->count++;
+            break;
+        }
     }
     else
+    // arr->count == MAXREECORDS
     {
-        // find the least, set that index to arr->next
-    }
+        for (int i = 0; i < arr->count; i++)
+        {
+            if (arr->records[i].freq >= frp->freq)
+                continue;
+            DEBUG_PRINTF("full: Stopped at %d\n", i);
 
-    // note: this is a copy.
-    arr->records[arr->next] = *frp;
+            arr->records[i] = *frp;
+            break;
+        }
+    }
+}
+
+void ma_clear(MasterArray *arr)
+{
+    arr->count = 0;
+    memset(arr->records, 0, sizeof(arr->records));
+
 }
 
 FreqRecord *ma_get_record(MasterArray *arr, int i)
@@ -201,14 +232,6 @@ void ma_print_array(MasterArray *arr)
     print_freq_records(arr->records);
 }
 
-#ifndef __GNUC__
-#pragma endregion
-#endif
-
-// todo: remove pragmas
-#ifndef __GNUC__
-#pragma region worker
-#endif
 
 typedef struct worker_s
 {
@@ -225,7 +248,6 @@ typedef struct worker_s
 
 typedef struct workerpoll_s
 {
-    Worker **workers;
     nfds_t nfds;
     struct pollfd fds[];
 } workerpoll_s;
@@ -320,12 +342,11 @@ ssize_t worker_recv(const Worker *w, FreqRecord *frp)
     return read(w->fd_recv_read, frp, sizeof(FreqRecord));
 }
 
-WorkerPoll *worker_create_poll(Worker **ws, int n)
+WorkerPoll *workerp_create_poll(Worker **ws, int n)
 {
     WorkerPoll *poll = panic_malloc(sizeof(WorkerPoll) + n * sizeof(struct pollfd));
 
     poll->nfds = n;
-    poll->workers = ws;
 
     for (int i = 0; i < poll->nfds; i++)
     {
@@ -363,16 +384,15 @@ int worker_start_run(Worker *w)
     return pid;
 }
 
-int workers_poll(WorkerPoll *p)
+int workerp_poll(WorkerPoll *p)
 {
     return poll(p->fds, p->nfds, 500);
 }
 
-int worker_check_after_poll(const WorkerPoll *p, int i)
+int workerp_check_after_poll(const WorkerPoll *p, int i)
 {
     if (p->fds[i].revents & POLLIN)
     {
-        DEBUG_PRINTF("worker %d is ready\n", i);
         return 0;
     }
     return 1;
@@ -396,6 +416,3 @@ int is_sentinel(FreqRecord *frp)
         return 1;
     return (frp->freq == 0 && strlen(frp->filename) == 0);
 }
-#ifndef __GNUC__
-#pragma endregion
-#endif

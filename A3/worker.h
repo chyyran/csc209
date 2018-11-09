@@ -8,19 +8,45 @@
 
 #include <sys/poll.h>
 
-// This data structure is used by the workers to prepare the output
-// to be sent to the master process.
 
+// FreqRecord APIs
+
+/**
+ * This data structure is used by the workers to prepare the output
+ * to be sent to the master process.
+ */
 typedef struct {
     int freq;
     char filename[PATHLENGTH];
 } FreqRecord;
 
+/**
+ * Retrives the frequency of the given word in the provided filename
+ * and indices. If the word is not found, returns a record with
+ * frequency 0 and an empty filename.
+ */
 FreqRecord *get_word(char *word, Node *head, char **file_names);
-void print_freq_records(FreqRecord *frp);
-void run_worker(char *dirname, int in, int out);
-int is_sentinel(FreqRecord *frp);
 
+/**
+ * Pretty-prints the frequency records for the provided FreqRecord
+ * array.
+ */
+void print_freq_records(FreqRecord *frp);
+
+/**
+ * Reads from the in file descriptor for a given word,
+ * searches for it on the index for the given directory, then
+ * writes the result to the out file descriptor.
+ */
+void run_worker(char *dirname, int in, int out);
+
+// -- Utility APIs
+
+/**
+ * Checks if the given FreqRecord is a sentinel value
+ * with frequency 0 and an empty filename.
+ */
+int is_sentinel(FreqRecord *frp);
 
 
 /**
@@ -28,9 +54,18 @@ int is_sentinel(FreqRecord *frp);
  */
 void *panic_malloc(size_t size);
 
+
+/**
+ * A realloc that panics and quits on on ENOMEM 
+ */
+void *panic_realloc(void *__ptr, size_t size);
+
 // --- Master Array APIs
 /**
  * Opaque type for MasterArray
+ * Used by the main program to collect search results.
+ * 
+ * Use the ma_* APIs to manipulate this array. 
  */
 typedef struct master_s MasterArray;
 
@@ -48,27 +83,42 @@ MasterArray *ma_init();
 void ma_insert_record(MasterArray *array, FreqRecord *frp);
 
 /**
+ * Clears the master array and deletes all its elements.
+ */
+void ma_clear(MasterArray *array);
+
+/**
  * Prints the master array using 
  */
 void ma_print_array(MasterArray *array);
+
 /**
  * Retrieves a pointer to the record in the MasterArray 
  */
 FreqRecord *ma_get_record(MasterArray *array, int i);
 
+
 // --- Worker APIs
 
 /**
  * Opaque type for Worker.
+ * 
+ * Represents a worker that will run a search on a different 
+ * process.
+ * 
+ * Use the worker_* APIs to manipulate individual Workers.
  */
 typedef struct worker_s Worker;
 
-typedef struct workerpoll_s WorkerPoll;
-
 /**
- * Handles when a worker has data ready.
+ * Opaque type for WorkerPoll.
+ * 
+ * Represents a pollable collection of running workers.
+ * 
+ * Use the workerp_* APIs to manipulate pollable collections
+ * of Workers.
  */
-typedef void (*WorkerDataReadyHandler)(Worker *w);
+typedef struct workerpoll_s WorkerPoll;
 
 /**
  * Creates a heap-allocated worker for the given directory.
@@ -106,6 +156,10 @@ Worker *worker_create(const char *dirname);
  * process/thread, except for those being used by the spawned process,
  * which will be closed in the calling process.
  * 
+ * Because this method closes pipes, it is imperative that a 
+ * WorkerPoll is created for this Worker before starting
+ * the loop.
+ * 
  * Within the spawned process where the run loop executes,
  * the worker will be closed for writes.
  * 
@@ -121,38 +175,6 @@ Worker *worker_create(const char *dirname);
 int worker_start_run(Worker *w);
 
 /**
- * Creates a worker poll, parallel to the provided worker array.
- */
-WorkerPoll *worker_create_poll(Worker **ws, int n);
-
-/**
- * Poll the given WorkerPoll for available recv reads.
- * 
- * When data is ready to be read from a given worker, this method
- * will return and modify the given WorkerPoll with 
- * new status.
- *
- * The polling timeout is set to 500ms; this function will
- * return before or after 500ms.
- * 
- * This method returns the same value as the underlying
- * poll call.
- * 
- * After this method returns, call worker_check_after_poll
- * to determine the new status of the workers.
-
- */
-int workers_poll(WorkerPoll *w);
-
-/**
- * Checks the status of workers after polled.
- * Returns:
- *  0 if reading from this worker will not block (perhaps data is available).
- *  1 if reading from this worker will block (no data available).
- */
-int worker_check_after_poll(const WorkerPoll *w, int i);
-
-/**
  * Frees the worker, releasing all memory and file descriptors.
  */
 void worker_free(Worker *w);
@@ -160,24 +182,48 @@ void worker_free(Worker *w);
 /**
  * Closes the worker for send writes on this process.
  * Once closed, the underlying pipe can never be reopened.
+ * 
+ * In general, this method should not be called directly if
+ * working with the worker_* APIs.
+ * 
+ * Instead, call worker_free once it is certain that the worker
+ * will never be reused within the memory space.
  */
 void worker_close_send_write(Worker *w);
 
 /**
  * Closes the worker for send reads on this process.
  * Once closed, the underlying pipe can never be reopened.
+ * 
+ * In general, this method should not be called directly if
+ * working with the worker_* APIs.
+ * 
+ * Instead, call worker_free once it is certain that the worker
+ * will never be reused within the memory space.
  */
 void worker_close_send_read(Worker *w);
 
 /**
  * Closes the worker for recv writes on this process.
  * Once closed, the underlying pipe can never be reopened.
+ * 
+ * In general, this method should not be called directly if
+ * working with the worker_* APIs.
+ * 
+ * Instead, call worker_free once it is certain that the worker
+ * will never be reused within the memory space.
  */
 void worker_close_recv_write(Worker *w);
 
 /**
  * Closes the worker for recv reads on this process.
  * Once closed, the underlying pipe can never be reopened.
+ * 
+ * In general, this method should not be called directly if
+ * working with the worker_* APIs.
+ * 
+ * Instead, call worker_free once it is certain that the worker
+ * will never be reused within the memory space.
  */
 void worker_close_recv_read(Worker *w);
 
@@ -219,6 +265,54 @@ ssize_t worker_send(Worker *w, const char *word);
  */
 ssize_t worker_recv(const Worker *w, FreqRecord *record);
 
+
+/**
+ * Creates a worker poll, parallel to the provided worker array.
+ * 
+ * Only start Workers with worker_start_run after creating a 
+ * WorkerPoll with the Worker, otherwise it may not be
+ * properly pollable due to pipes being closed.
+ * 
+ * A WorkerPoll does not own any resources besides memory and
+ * is intended to be used with a static lifetime once created.
+ * 
+ * However, it may be safely freed with free().
+ */
+WorkerPoll *workerp_create_poll(Worker **ws, int n);
+
+/**
+ * Poll the given WorkerPoll for available recv reads.
+ * 
+ * Ensure that all Workers on this WorkerPoll are running
+ * with worker_start_run before attempting to poll.
+ * 
+ * When data is ready to be read from a given worker, this method
+ * will return and modify the given WorkerPoll with 
+ * new status.
+ *
+ * The polling timeout is set to 500ms; this function will
+ * return before or after 500ms.
+ * 
+ * This method returns the same value as the underlying
+ * poll call.
+ * 
+ * After this method returns, call worker_check_after_poll
+ * to determine the new status of the workers.
+
+ */
+int workerp_poll(WorkerPoll *w);
+
+/**
+ * Checks the status of workers after polled.
+ * Returns:
+ *  0 if reading from this worker will not block (perhaps data is available).
+ *  1 if reading from this worker will block (no data available).
+ * 
+ * This method relies on the parallel between the array of Workers this
+ * WorkerPoll was created for. If the Worker array changed between then and
+ * the call of this function, results will be unexpected.
+ */
+int workerp_check_after_poll(const WorkerPoll *w, int i);
 
 #ifdef DEBUG
 #define DEBUG_PRINTF(...) do { if (DEBUG) { printf(__VA_ARGS__); } } while (0)

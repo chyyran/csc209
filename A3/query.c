@@ -87,19 +87,17 @@ int main(int argc, char **argv)
         if (S_ISDIR(sbuf.st_mode))
         {
             // create workers...
-            workers = realloc(workers, sizeof(Worker *) * (nworkers + 1));
+            workers = panic_realloc(workers, sizeof(Worker *) * (nworkers + 1));
             workers[nworkers] = worker_create(path);
             nworkers++;
-            // run_worker(path, STDIN_FILENO, STDOUT_FILENO);
         }
     }
 
     if (closedir(dirp) < 0)
         perror("closedir");
 
-    MasterArray *master = ma_init();
-
-    WorkerPoll *poll = worker_create_poll(workers, nworkers);
+    // init management objects...
+    WorkerPoll *poll = workerp_create_poll(workers, nworkers);
 
     // Start workers
     for (int i = 0; i < nworkers; i++)
@@ -112,6 +110,7 @@ int main(int argc, char **argv)
     pipe(pipefd_sentinel);
     fcntl(pipefd_sentinel[0], F_SETFL, O_NONBLOCK);
 
+    // fork a process to listen to STDIN
     int pid = fork();
 
     if (pid == 0)
@@ -144,23 +143,25 @@ int main(int argc, char **argv)
 
     close(pipefd_sentinel[1]);
 
+    // main process handles the master array
+    MasterArray *master = ma_init();
+
     char quit = 0;
     FreqRecord freqbuf;
     while ((read(pipefd_sentinel[0], &quit, sizeof(char))) == -1 && quit == 0)
     {
-        workers_poll(poll);
+        workerp_poll(poll);
         for (int i = 0; i < nworkers; i++)
         {
-            if (!worker_check_after_poll(poll, i))
+            if (!workerp_check_after_poll(poll, i))
             {
-                DEBUG_PRINTF("working for worker %d\n", i);
                 if (worker_recv(workers[i], &freqbuf) != 0)
                 {
-                    DEBUG_PRINTF("working for worker recv %d\n", i);
                     if (is_sentinel(&freqbuf))
                     {
                         DEBUG_PRINTF("received sentinel\n");
                         ma_print_array(master);
+                        ma_clear(master);
                         continue;
                     }
                     

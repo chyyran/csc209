@@ -130,8 +130,7 @@ typedef struct workerpoll_s WorkerPoll;
  * 
  * The write end of the recv pipe is never accessible to the caller,
  * nor is the read end of the send pipe. However, these pipes
- * will remain open until the corresponding worker_close_* API
- * is called for each of the 4 pipe ends.
+ * will remain open until the worker is freed.
  * 
  * In any case, the opened pipes are not intended for direct usage.
  * Instead, data can be sent and received through the worker_send
@@ -164,7 +163,7 @@ Worker *worker_create(const char *dirname);
  * the worker will be closed for writes.
  * 
  * To stop this worker, send an EOF or close the underlying write pipe
- * by calling worker_close_write.
+ * by calling worker_free
  * 
  * This method returns the PID of the spawned process that the loop is
  * running on.
@@ -180,54 +179,6 @@ int worker_start_run(Worker *w);
 void worker_free(Worker *w);
 
 /**
- * Closes the worker for send writes on this process.
- * Once closed, the underlying pipe can never be reopened.
- * 
- * In general, this method should not be called directly if
- * working with the worker_* APIs.
- * 
- * Instead, call worker_free once it is certain that the worker
- * will never be reused within the memory space.
- */
-void worker_close_send_write(Worker *w);
-
-/**
- * Closes the worker for send reads on this process.
- * Once closed, the underlying pipe can never be reopened.
- * 
- * In general, this method should not be called directly if
- * working with the worker_* APIs.
- * 
- * Instead, call worker_free once it is certain that the worker
- * will never be reused within the memory space.
- */
-void worker_close_send_read(Worker *w);
-
-/**
- * Closes the worker for recv writes on this process.
- * Once closed, the underlying pipe can never be reopened.
- * 
- * In general, this method should not be called directly if
- * working with the worker_* APIs.
- * 
- * Instead, call worker_free once it is certain that the worker
- * will never be reused within the memory space.
- */
-void worker_close_recv_write(Worker *w);
-
-/**
- * Closes the worker for recv reads on this process.
- * Once closed, the underlying pipe can never be reopened.
- * 
- * In general, this method should not be called directly if
- * working with the worker_* APIs.
- * 
- * Instead, call worker_free once it is certain that the worker
- * will never be reused within the memory space.
- */
-void worker_close_recv_read(Worker *w);
-
-/**
  * Send a word to the given worker.
  * 
  * This method returns the result of the underlying
@@ -239,8 +190,8 @@ void worker_close_recv_read(Worker *w);
  * will be truncated. This method mutates the worker
  * due to reusing an underlying buffer for the write.
  * 
- * If the pipe has been closed previously by 
- * worker_close_send_write, this method returns 0.
+ * If the pipe has been closed previously,
+ * this method returns 0.
  */
 ssize_t worker_send(Worker *w, const char *word);
 
@@ -252,8 +203,8 @@ ssize_t worker_send(Worker *w, const char *word);
  * the given worker by worker_create: the number of bytes
  * read from the pipe
  * 
- * If the pipe has been closed previously by 
- * worker_close_recv_read this method returns 0.
+ * If the pipe has been closed previously,
+ * this method returns 0.
  */
 ssize_t worker_recv(const Worker *w, FreqRecord *record);
 

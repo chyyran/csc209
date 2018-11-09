@@ -282,6 +282,17 @@ Worker *worker_create(const char *path)
     return w;
 }
 
+
+/**
+ * Closes the worker for send writes on this process.
+ * Once closed, the underlying pipe can never be reopened.
+ * 
+ * In general, this method should not be called directly if
+ * working with the worker_* APIs.
+ * 
+ * Instead, call worker_free once it is certain that the worker
+ * will never be reused within the memory space.
+ */
 void worker_close_send_write(Worker *w)
 {
     if (w->fd_send_write == -1)
@@ -290,6 +301,17 @@ void worker_close_send_write(Worker *w)
     w->fd_send_write = -1;
 }
 
+
+/**
+ * Closes the worker for send reads on this process.
+ * Once closed, the underlying pipe can never be reopened.
+ * 
+ * In general, this method should not be called directly if
+ * working with the worker_* APIs.
+ * 
+ * Instead, call worker_free once it is certain that the worker
+ * will never be reused within the memory space.
+ */
 void worker_close_send_read(Worker *w)
 {
     if (w->fd_send_read == -1)
@@ -298,6 +320,17 @@ void worker_close_send_read(Worker *w)
     w->fd_send_read = -1;
 }
 
+
+/**
+ * Closes the worker for recv writes on this process.
+ * Once closed, the underlying pipe can never be reopened.
+ * 
+ * In general, this method should not be called directly if
+ * working with the worker_* APIs.
+ * 
+ * Instead, call worker_free once it is certain that the worker
+ * will never be reused within the memory space.
+ */
 void worker_close_recv_write(Worker *w)
 {
     if (w->fd_recv_write == -1)
@@ -306,6 +339,16 @@ void worker_close_recv_write(Worker *w)
     w->fd_recv_write = -1;
 }
 
+/**
+ * Closes the worker for recv reads on this process.
+ * Once closed, the underlying pipe can never be reopened.
+ * 
+ * In general, this method should not be called directly if
+ * working with the worker_* APIs.
+ * 
+ * Instead, call worker_free once it is certain that the worker
+ * will never be reused within the memory space.
+ */
 void worker_close_recv_read(Worker *w)
 {
     if (w->fd_recv_read == -1)

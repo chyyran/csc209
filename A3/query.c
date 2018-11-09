@@ -54,7 +54,7 @@ int main(int argc, char **argv)
      */
     struct dirent *dp;
 
-    Worker **workers = malloc(sizeof(Worker *));
+    Worker **workers = panic_malloc(sizeof(Worker *));
 
     int nworkers = 0;
     while ((dp = readdir(dirp)) != NULL)

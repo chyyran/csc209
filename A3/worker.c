@@ -9,6 +9,22 @@
 
 const FreqRecord record_sentinel = {0, ""};
 
+
+/**
+ * A panic_malloc that panics and quits on on ENOMEM 
+ */
+void *panic_malloc(size_t size)
+{
+    void *ptr;
+    if ((ptr = malloc(size)) == NULL)
+    {
+        perror("malloc");
+        exit(1);
+    }        
+    return ptr;
+}
+
+
 /* Complete this function for Task 1. Including fixing this comment.
 * Gets an array of FreqRecords for the given word. 
 */
@@ -19,11 +35,12 @@ FreqRecord *get_word(char *word, Node *head, char **file_names)
     while (head)
     {
         // if we break
-        if (!strncmp(head->word, word, strlen(head->word))) {
+        if (!strncmp(head->word, word, strlen(head->word)))
+        {
             DEBUG_PRINTF("word found!: %s\n", head->word);
             break;
         }
-            
+
         DEBUG_PRINTF("%s != %s\n", head->word, word);
         head = head->next;
     }
@@ -32,12 +49,12 @@ FreqRecord *get_word(char *word, Node *head, char **file_names)
     if (!head)
     {
         DEBUG_PRINTF("none found\n");
-        FreqRecord *returnRecord = malloc(sizeof(FreqRecord));
+        FreqRecord *returnRecord = panic_malloc(sizeof(FreqRecord));
         memcpy(returnRecord, &record_sentinel, sizeof(FreqRecord));
         return returnRecord;
     }
 
-    FreqRecord *returnRecord = malloc(sizeof(FreqRecord));
+    FreqRecord *returnRecord = panic_malloc(sizeof(FreqRecord));
     int recordCount = 0;
     for (int i = 0; i < MAXFILES; i++)
     {
@@ -82,8 +99,8 @@ void print_freq_records(FreqRecord *frp)
 void run_worker(char *dirname, int in, int out)
 {
 
-    char *listfile = malloc(sizeof(char) * (strlen(dirname) + strlen("/index") + 0x20));
-    char *namefile = malloc(sizeof(char) * (strlen(dirname) + strlen("/filenames") + 0x20));
+    char *listfile = panic_malloc(sizeof(char) * (strlen(dirname) + strlen("/index") + 0x20));
+    char *namefile = panic_malloc(sizeof(char) * (strlen(dirname) + strlen("/filenames") + 0x20));
 
     sprintf(listfile, "%s/%s", dirname, "index");
     sprintf(namefile, "%s/%s", dirname, "filenames");
@@ -122,7 +139,7 @@ void run_worker(char *dirname, int in, int out)
     DEBUG_PRINTF("all gone! %d in: %d, out: %d buf: %s\n", readbytes, in, out, buf);
     free(listfile);
     free(namefile);
-    //todo: free init_filenames
+    
     return;
 }
 
@@ -140,7 +157,7 @@ typedef struct master_s
 
 MasterArray *ma_init()
 {
-    MasterArray *arr = malloc(sizeof(master_s));
+    MasterArray *arr = panic_malloc(sizeof(master_s));
     arr->count = 0;
 
     // next is incremented before insertion.
@@ -193,7 +210,6 @@ void ma_print_array(MasterArray *arr)
 #pragma region worker
 #endif
 
-
 typedef struct worker_s
 {
     int fd_send_write;
@@ -205,7 +221,6 @@ typedef struct worker_s
     char path[128];
     char sendbuf[32];
 
-
 } worker_s;
 
 typedef struct workerpoll_s
@@ -215,7 +230,6 @@ typedef struct workerpoll_s
     struct pollfd fds[];
 } workerpoll_s;
 
-
 Worker *worker_create(const char *path)
 {
     if (strlen(path) >= 128)
@@ -223,7 +237,7 @@ Worker *worker_create(const char *path)
         perror("worker_create: dirname too long");
     }
 
-    Worker *w = malloc(sizeof(Worker));
+    Worker *w = panic_malloc(sizeof(Worker));
     int send_pipefd[2];
     int recv_pipefd[2];
 
@@ -242,7 +256,6 @@ Worker *worker_create(const char *path)
     w->fd_recv_read = recv_pipefd[0];
     w->fd_recv_write = recv_pipefd[1];
 
-    
     return w;
 }
 
@@ -280,7 +293,8 @@ void worker_close_recv_read(Worker *w)
 
 ssize_t worker_send(Worker *w, const char *word)
 {
-    if (w->fd_send_write == -1) {
+    if (w->fd_send_write == -1)
+    {
         DEBUG_PRINTF("failed to send\n");
         return 0;
     }
@@ -297,8 +311,9 @@ ssize_t worker_send(Worker *w, const char *word)
 
 ssize_t worker_recv(const Worker *w, FreqRecord *frp)
 {
-    if (w->fd_recv_read == -1) {
-        DEBUG_PRINTF("recv read closed :(\n");
+    if (w->fd_recv_read == -1)
+    {
+        perror("worker_recv: recv read closed :(\n");
         return 1;
     }
     memset(frp, 0, sizeof(FreqRecord));
@@ -307,7 +322,7 @@ ssize_t worker_recv(const Worker *w, FreqRecord *frp)
 
 WorkerPoll *worker_create_poll(Worker **ws, int n)
 {
-    WorkerPoll *poll = malloc(sizeof(WorkerPoll) + n * sizeof(struct pollfd));
+    WorkerPoll *poll = panic_malloc(sizeof(WorkerPoll) + n * sizeof(struct pollfd));
 
     poll->nfds = n;
     poll->workers = ws;
@@ -320,11 +335,17 @@ WorkerPoll *worker_create_poll(Worker **ws, int n)
     return poll;
 }
 
-int worker_start_run(Worker *w) 
+int worker_start_run(Worker *w)
 {
     int pid = fork();
 
-    if (pid != 0) { 
+    if (pid == -1)
+    {
+        perror("fork: unable to create children.");
+        exit(1);
+    }
+    if (pid != 0)
+    {
         // close unused pipes.
         worker_close_send_read(w);
         worker_close_recv_write(w);
@@ -349,10 +370,10 @@ int workers_poll(WorkerPoll *p)
 
 int worker_check_after_poll(const WorkerPoll *p, int i)
 {
-    if (p->fds[i].revents & POLLIN) 
+    if (p->fds[i].revents & POLLIN)
     {
         DEBUG_PRINTF("worker %d is ready\n", i);
-         return 0; 
+        return 0;
     }
     return 1;
 }
@@ -371,7 +392,8 @@ void worker_free(Worker *w)
 
 int is_sentinel(FreqRecord *frp)
 {
-    if (frp == NULL) return 1;
+    if (frp == NULL)
+        return 1;
     return (frp->freq == 0 && strlen(frp->filename) == 0);
 }
 #ifndef __GNUC__

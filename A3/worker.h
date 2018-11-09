@@ -21,6 +21,13 @@ void print_freq_records(FreqRecord *frp);
 void run_worker(char *dirname, int in, int out);
 int is_sentinel(FreqRecord *frp);
 
+
+
+/**
+ * A malloc that panics and quits on on ENOMEM 
+ */
+void *panic_malloc(size_t size);
+
 // --- Master Array APIs
 /**
  * Opaque type for MasterArray

@@ -266,7 +266,7 @@ ssize_t worker_recv(const Worker *w, FreqRecord *record);
  * properly pollable due to pipes being closed.
  * 
  * A WorkerPoll does not own any resources besides memory and
- * is intended to be used with a static lifetime once created.
+ * is intended to have a static lifetime once created.
  * 
  * However, it may be safely freed with free().
  */

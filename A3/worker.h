@@ -241,10 +241,6 @@ void worker_close_recv_read(Worker *w);
  * 
  * If the pipe has been closed previously by 
  * worker_close_send_write, this method returns 0.
- * 
- * To avoid confusion, this method is intentionally named
- * worker_send instead of worker_write to indicate that
- * it can only send words.
  */
 ssize_t worker_send(Worker *w, const char *word);
 
@@ -258,10 +254,6 @@ ssize_t worker_send(Worker *w, const char *word);
  * 
  * If the pipe has been closed previously by 
  * worker_close_recv_read this method returns 0.
- * 
- * To avoid confusion, this method is intentionally named
- * worker_recv instead of worker_read to indicate that
- * it can only send words.
  */
 ssize_t worker_recv(const Worker *w, FreqRecord *record);
 

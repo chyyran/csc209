@@ -19,7 +19,7 @@ typedef struct {
 FreqRecord *get_word(char *word, Node *head, char **file_names);
 void print_freq_records(FreqRecord *frp);
 void run_worker(char *dirname, int in, int out);
-
+int is_sentinel(FreqRecord *frp);
 
 // --- Master Array APIs
 /**
@@ -103,6 +103,9 @@ Worker *worker_create(const char *dirname);
  * 
  * This method returns the PID of the spawned process that the loop is
  * running on.
+ * 
+ * This method will never return on the spawned process, and instead
+ * will exit early.
  */
 int worker_start_run(Worker *w);
 
@@ -205,4 +208,11 @@ ssize_t worker_send(Worker *w, const char *word);
  */
 ssize_t worker_recv(const Worker *w, FreqRecord *record);
 
+#define DEBUG 1
+
+#ifdef DEBUG
+#define DEBUG_PRINTF(...) do { if (DEBUG) { printf(__VA_ARGS__); } } while (0)
+#else
+#define DEBUG_PRINTF(fmt, ...)
+#endif
 #endif /* WORKER_H */

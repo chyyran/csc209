@@ -15,18 +15,23 @@ const FreqRecord record_sentinel = {0, ""};
 FreqRecord *get_word(char *word, Node *head, char **file_names)
 {
     // Search for the word in the record
+    DEBUG_PRINTF("searching for %s\n", word);
     while (head)
     {
         // if we break
-        if (!strcmp(head->word, word))
+        if (!strncmp(head->word, word, strlen(head->word))) {
+            DEBUG_PRINTF("word found!: %s\n", head->word);
             break;
-
+        }
+            
+        DEBUG_PRINTF("%s != %s\n", head->word, word);
         head = head->next;
     }
 
     // return an empty sentinel
     if (!head)
     {
+        DEBUG_PRINTF("none found\n");
         FreqRecord *returnRecord = malloc(sizeof(FreqRecord));
         memcpy(returnRecord, &record_sentinel, sizeof(FreqRecord));
         return returnRecord;
@@ -91,17 +96,21 @@ void run_worker(char *dirname, int in, int out)
     int readbytes = 0;
     char buf[MAXWORD];
     memset(buf, 0, MAXWORD);
+    DEBUG_PRINTF("from worker thread, in: %d, out: %d\n", in, out);
 
-    while ((readbytes = read(in, buf, MAXWORD)) <= MAXWORD && readbytes != 0 && readbytes != EOF)
+    while ((readbytes = read(in, buf, MAXWORD)) <= MAXWORD && readbytes > 0)
     {
+        DEBUG_PRINTF("from worker thread inside loop: %s\n", buf);
         int i = 0;
         FreqRecord *records = get_word(buf, head, filenames);
         while (records != NULL && records[i].freq != 0)
         {
             write(out, &records[i], sizeof(FreqRecord));
-            printf("\n%d: %s\n", records[i].freq, records[i].filename);
+            DEBUG_PRINTF("sent to out %d: %s\n", records[i].freq, records[i].filename);
             i++;
         }
+
+        DEBUG_PRINTF("records gotten finsihed\n");
 
         memset(buf, 0, MAXWORD); // better safe than sorry, flush the buffer.
 
@@ -110,6 +119,7 @@ void run_worker(char *dirname, int in, int out)
         free(records);
     }
 
+    DEBUG_PRINTF("all gone! %d in: %d, out: %d buf: %s\n", readbytes, in, out, buf);
     free(listfile);
     free(namefile);
     //todo: free init_filenames
@@ -178,6 +188,7 @@ FreqRecord *get_record(MasterArray *arr, int i)
 #pragma region worker
 #endif
 
+
 typedef struct worker_s
 {
     int fd_send_write;
@@ -188,6 +199,8 @@ typedef struct worker_s
 
     char path[128];
     char sendbuf[32];
+
+
 } worker_s;
 
 typedef struct workerpoll_s
@@ -197,6 +210,7 @@ typedef struct workerpoll_s
     struct pollfd fds[];
 } workerpoll_s;
 
+
 Worker *worker_create(const char *path)
 {
     if (strlen(path) >= 128)
@@ -204,7 +218,7 @@ Worker *worker_create(const char *path)
         perror("worker_create: dirname too long");
     }
 
-    Worker *w = malloc(sizeof(worker_s));
+    Worker *w = malloc(sizeof(Worker));
     int send_pipefd[2];
     int recv_pipefd[2];
 
@@ -217,12 +231,13 @@ Worker *worker_create(const char *path)
     pipe(send_pipefd);
     pipe(recv_pipefd);
 
-    w->fd_send_write = send_pipefd[0];
-    w->fd_send_read = send_pipefd[1];
+    w->fd_send_read = send_pipefd[0];
+    w->fd_send_write = send_pipefd[1];
 
-    w->fd_recv_write = recv_pipefd[0];
-    w->fd_recv_read = recv_pipefd[1];
+    w->fd_recv_read = recv_pipefd[0];
+    w->fd_recv_write = recv_pipefd[1];
 
+    
     return w;
 }
 
@@ -244,24 +259,26 @@ void worker_close_send_read(Worker *w)
 
 void worker_close_recv_write(Worker *w)
 {
-    if (w->fd_send_write == -1)
+    if (w->fd_recv_write == -1)
         return;
-    close(w->fd_send_write);
-    w->fd_send_write = -1;
+    close(w->fd_recv_write);
+    w->fd_recv_write = -1;
 }
 
 void worker_close_recv_read(Worker *w)
 {
-    if (w->fd_send_read == -1)
+    if (w->fd_recv_read == -1)
         return;
-    close(w->fd_send_read);
-    w->fd_send_read = -1;
+    close(w->fd_recv_read);
+    w->fd_recv_read = -1;
 }
 
 ssize_t worker_send(Worker *w, const char *word)
 {
-    if (w->fd_send_write == -1)
+    if (w->fd_send_write == -1) {
+        DEBUG_PRINTF("failed to send\n");
         return 0;
+    }
     // prepare buffer for a safe send
     // instead of allocating a new buffer on the stack,
     // have one reused for performance and safety reasons.
@@ -269,13 +286,16 @@ ssize_t worker_send(Worker *w, const char *word)
     strncpy(w->sendbuf, word, 31);
     w->sendbuf[31] = '\0';
 
+    DEBUG_PRINTF("sending value %s\n", w->sendbuf);
     return write(w->fd_send_write, w->sendbuf, 32);
 }
 
 ssize_t worker_recv(const Worker *w, FreqRecord *frp)
 {
-    if (w->fd_recv_read == -1)
-        return 0;
+    if (w->fd_recv_read == -1) {
+        DEBUG_PRINTF("recv read closed :(\n");
+        return 1;
+    }
     return read(w->fd_recv_read, frp, sizeof(FreqRecord));
 }
 
@@ -285,7 +305,8 @@ WorkerPoll *worker_create_poll(Worker **ws, int n)
 
     poll->nfds = n;
     poll->workers = ws;
-    for (int i = 0; i < n; i++)
+
+    for (int i = 0; i < poll->nfds; i++)
     {
         poll->fds[i].fd = ws[i]->fd_recv_read;
         poll->fds[i].events = POLLIN;
@@ -305,12 +326,13 @@ int worker_start_run(Worker *w)
     }
 
     // -- child process
-
+    DEBUG_PRINTF("starting child process...\n");
     // close unused pipes.
     worker_close_recv_read(w);
     worker_close_send_write(w);
     run_worker(w->path, w->fd_send_read, w->fd_recv_write);
     worker_free(w);
+    exit(0);
     return pid;
 }
 
@@ -321,7 +343,11 @@ int workers_poll(WorkerPoll *p)
 
 int worker_check_after_poll(const WorkerPoll *p, int i)
 {
-    if (p->fds[i].revents & POLLIN) return 0;
+    if (p->fds[i].revents & POLLIN) 
+    {
+        DEBUG_PRINTF("worker %d is ready\n", i);
+         return 0; 
+    }
     return 1;
 }
 
@@ -337,6 +363,11 @@ void worker_free(Worker *w)
     free(w);
 }
 
+int is_sentinel(FreqRecord *frp)
+{
+    if (frp == NULL) return 1;
+    return (frp->freq == 0 && strlen(frp->filename) == 0);
+}
 #ifndef __GNUC__
 #pragma endregion
 #endif

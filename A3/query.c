@@ -97,7 +97,7 @@ int main(int argc, char **argv)
     if (closedir(dirp) < 0)
         perror("closedir");
 
-    MasterArray *master = instantiate_master_array();
+    MasterArray *master = ma_init();
 
     WorkerPoll *poll = worker_create_poll(workers, nworkers);
 
@@ -107,11 +107,13 @@ int main(int argc, char **argv)
         worker_start_run(workers[i]);
     }
 
+    // create the non-blocking exit signaller
     int pipefd_sentinel[2];
     pipe(pipefd_sentinel);
     fcntl(pipefd_sentinel[0], F_SETFL, O_NONBLOCK);
 
     int pid = fork();
+
     if (pid == 0)
     {
         char buf[32];
@@ -146,7 +148,7 @@ int main(int argc, char **argv)
     FreqRecord freqbuf;
     while ((read(pipefd_sentinel[0], &quit, sizeof(char))) == -1 && quit == 0)
     {
-        int ret = workers_poll(poll);
+        workers_poll(poll);
         for (int i = 0; i < nworkers; i++)
         {
             if (!worker_check_after_poll(poll, i))
@@ -158,10 +160,11 @@ int main(int argc, char **argv)
                     if (is_sentinel(&freqbuf))
                     {
                         DEBUG_PRINTF("received sentinel\n");
+                        ma_print_array(master);
                         continue;
                     }
-
-                    DEBUG_PRINTF("%s\n", freqbuf.filename);
+                    
+                    ma_insert_record(master, &freqbuf);
                 }
             }
         }

@@ -30,7 +30,7 @@ typedef struct master_s MasterArray;
 /**
  * Instantiates a master array on the heap.
  */
-MasterArray *instantiate_master_array();
+MasterArray *ma_init();
 
 /**
  * Inserts a new FreqRecord into the MasterArray following the given conditions
@@ -38,12 +38,16 @@ MasterArray *instantiate_master_array();
  * - After insertion, the MasterArray is sorted.
  * - If the array is full it will replace the least frequent record.
  */ 
-void insert_record(MasterArray *array, FreqRecord *frp);
+void ma_insert_record(MasterArray *array, FreqRecord *frp);
 
+/**
+ * Prints the master array using 
+ */
+void ma_print_array(MasterArray *array);
 /**
  * Retrieves a pointer to the record in the MasterArray 
  */
-FreqRecord *get_record(MasterArray *array, int i);
+FreqRecord *ma_get_record(MasterArray *array, int i);
 
 // --- Worker APIs
 
@@ -208,7 +212,6 @@ ssize_t worker_send(Worker *w, const char *word);
  */
 ssize_t worker_recv(const Worker *w, FreqRecord *record);
 
-#define DEBUG 1
 
 #ifdef DEBUG
 #define DEBUG_PRINTF(...) do { if (DEBUG) { printf(__VA_ARGS__); } } while (0)

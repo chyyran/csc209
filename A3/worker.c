@@ -138,7 +138,7 @@ typedef struct master_s
     int next;
 } master_s;
 
-MasterArray *instantiate_master_array()
+MasterArray *ma_init()
 {
     MasterArray *arr = malloc(sizeof(master_s));
     arr->count = 0;
@@ -151,7 +151,7 @@ MasterArray *instantiate_master_array()
     return arr;
 }
 
-void insert_record(MasterArray *arr, FreqRecord *frp)
+void ma_insert_record(MasterArray *arr, FreqRecord *frp)
 {
     // do insertion here...
     // full
@@ -174,9 +174,14 @@ void insert_record(MasterArray *arr, FreqRecord *frp)
     arr->records[arr->next] = *frp;
 }
 
-FreqRecord *get_record(MasterArray *arr, int i)
+FreqRecord *ma_get_record(MasterArray *arr, int i)
 {
     return &arr->records[i];
+}
+
+void ma_print_array(MasterArray *arr)
+{
+    print_freq_records(arr->records);
 }
 
 #ifndef __GNUC__
@@ -296,6 +301,7 @@ ssize_t worker_recv(const Worker *w, FreqRecord *frp)
         DEBUG_PRINTF("recv read closed :(\n");
         return 1;
     }
+    memset(frp, 0, sizeof(FreqRecord));
     return read(w->fd_recv_read, frp, sizeof(FreqRecord));
 }
 

@@ -193,7 +193,7 @@ void ma_insert_record(MasterArray *arr, FreqRecord *frp)
 
             DEBUG_PRINTF("shift: Stopped at %d\n", i);
             // arr->records[i].freq < frp->freq <= arr->records[i - 1].freq
-           
+
             memmove(&arr->records[i + 1], &arr->records[i], sizeof(FreqRecord) * (MAXRECORDS - i - 1));
             arr->records[i] = *frp;
             arr->count++;
@@ -219,7 +219,6 @@ void ma_clear(MasterArray *arr)
 {
     arr->count = 0;
     memset(arr->records, 0, sizeof(arr->records));
-
 }
 
 FreqRecord *ma_get_record(MasterArray *arr, int i)
@@ -231,7 +230,6 @@ void ma_print_array(MasterArray *arr)
 {
     print_freq_records(arr->records);
 }
-
 
 typedef struct worker_s
 {
@@ -269,8 +267,11 @@ Worker *worker_create(const char *path)
 
     // create pipes
 
-    pipe(send_pipefd);
-    pipe(recv_pipefd);
+    if (pipe(send_pipefd) == -1 || pipe(recv_pipefd) == -1)
+    {
+        perror("pipe");
+        exit(1);
+    }
 
     w->fd_send_read = send_pipefd[0];
     w->fd_send_write = send_pipefd[1];

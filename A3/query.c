@@ -107,12 +107,20 @@ int main(int argc, char **argv)
 
     // create the non-blocking exit signaller
     int pipefd_sentinel[2];
-    pipe(pipefd_sentinel);
+    if (pipe(pipefd_sentinel) == -1)
+    {
+        perror("pipe");
+        exit(1);
+    }
     fcntl(pipefd_sentinel[0], F_SETFL, O_NONBLOCK);
 
     // fork a process to listen to STDIN
     int pid = fork();
-
+    if (pid == -1)
+    {
+        perror("fork");
+        exit(1);
+    }
     if (pid == 0)
     {
         char buf[32];
@@ -164,7 +172,7 @@ int main(int argc, char **argv)
                         ma_clear(master);
                         continue;
                     }
-                    
+
                     ma_insert_record(master, &freqbuf);
                 }
             }

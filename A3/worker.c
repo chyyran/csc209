@@ -3,11 +3,14 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <dirent.h>
+#include <sys/stat.h>
 
 #include "freq_list.h"
 #include "worker.h"
 
 const FreqRecord record_sentinel = {0, ""};
+
+// -- Utility APIs
 
 /**
  * A panic_malloc that panics and quits on on ENOMEM 
@@ -37,9 +40,24 @@ void *panic_realloc(void *__ptr, size_t size)
     return ptr;
 }
 
-/* Complete this function for Task 1. Including fixing this comment.
-* Gets an array of FreqRecords for the given word. 
-*/
+/**
+ * Checks if the given FreqRecord is a sentinel value
+ * with frequency 0 and an empty filename.
+ */
+int is_sentinel(FreqRecord *frp)
+{
+    if (frp == NULL)
+        return 1;
+    return (frp->freq == 0 && strlen(frp->filename) == 0);
+}
+
+// FreqRecord APIs
+
+/**
+ * Retrives the frequency of the given word in the provided filename
+ * and indices. If the word is not found, returns a record with
+ * frequency 0 and an empty filename.
+ */
 FreqRecord *get_word(char *word, Node *head, char **file_names)
 {
     // Search for the word in the record
@@ -88,9 +106,10 @@ FreqRecord *get_word(char *word, Node *head, char **file_names)
     return returnRecord;
 }
 
-/* Print to standard output the frequency records for a word.
-* Use this for your own testing and also for query.c
-*/
+/**
+ * Pretty-prints the frequency records for the provided FreqRecord
+ * array.
+ */
 void print_freq_records(FreqRecord *frp)
 {
     int i = 0;
@@ -102,8 +121,11 @@ void print_freq_records(FreqRecord *frp)
     }
 }
 
-/* Complete this function for Task 2 including writing a better comment.
-*/
+/**
+ * Reads from the in file descriptor for a given word,
+ * searches for it on the index for the given directory, then
+ * writes the result to the out file descriptor.
+ */
 void run_worker(char *dirname, int in, int out)
 {
 
@@ -151,13 +173,26 @@ void run_worker(char *dirname, int in, int out)
     return;
 }
 
+// --- Master Array APIs
+
+/**
+ * Struct definition for opaque type MasterArray
+ * 
+ * Used by the main program to collect search results.
+ * Use the ma_* APIs to manipulate this array. 
+ */
 typedef struct master_s
 {
     // Buffer one record for shifting
     FreqRecord records[MAXRECORDS + 1];
+
+    // Number of records in the array
     int count;
 } master_s;
 
+/**
+ * Instantiates a master array on the heap.
+ */
 MasterArray *ma_init()
 {
     MasterArray *arr = panic_malloc(sizeof(master_s));
@@ -168,6 +203,12 @@ MasterArray *ma_init()
     return arr;
 }
 
+/**
+ * Inserts a new FreqRecord into the MasterArray following the given conditions
+ * 
+ * - After insertion, the MasterArray is sorted.
+ * - If the array is full it will replace the least frequent record.
+ */
 void ma_insert_record(MasterArray *arr, FreqRecord *frp)
 {
 
@@ -215,41 +256,103 @@ void ma_insert_record(MasterArray *arr, FreqRecord *frp)
     }
 }
 
+/**
+ * Clears the master array and deletes all its elements.
+ */
 void ma_clear(MasterArray *arr)
 {
     arr->count = 0;
     memset(arr->records, 0, sizeof(arr->records));
 }
 
+/**
+ * Retrieves a pointer to the record in the MasterArray 
+ */
 FreqRecord *ma_get_record(MasterArray *arr, int i)
 {
     return &arr->records[i];
 }
 
+/**
+ * Prints the contents of the master array using print_freq_records
+ */
 void ma_print_array(MasterArray *arr)
 {
     print_freq_records(arr->records);
 }
 
+// -- Worker APIs
+
+/**
+ * Struct definition for opaque type Worker.
+ * 
+ * Represents a worker that will run a search on a different 
+ * process.
+ * 
+ * Use the worker_* APIs to manipulate individual Workers.
+ */
 typedef struct worker_s
 {
+    // File descriptors for send and recv pipe ends
+
     int fd_send_write;
     int fd_send_read;
 
     int fd_recv_write;
     int fd_recv_read;
 
+    // The folder that the worker will search on
+    // should contain an index and filenames file.
     char path[128];
+
+    // buffer used for sending messages to this worker
     char sendbuf[32];
 
 } worker_s;
 
+/**
+ * Struct definition for Opaque type WorkerPoll.
+ * 
+ * Represents a pollable collection of running workers.
+ * 
+ * Use the workerp_* APIs to manipulate pollable collections
+ * of Workers.
+ */
 typedef struct workerpoll_s
 {
+    // number of file descriptors to poll
     nfds_t nfds;
+    // pollfd for each file descriptor
     struct pollfd fds[];
 } workerpoll_s;
 
+/**
+ * Creates a heap-allocated worker for the given directory.
+ * 
+ * Workers are not executed until called on by worker_run,
+ * and two pairs of read/write pipes are automatically opened,
+ * one pair for receiving (recv) data, and one pair for sending (send) 
+ * data to the worker.
+ * 
+ * The write end of the recv pipe is never accessible to the caller,
+ * nor is the read end of the send pipe. However, these pipes
+ * will remain open until the worker is freed.
+ * 
+ * In any case, the opened pipes are not intended for direct usage.
+ * Instead, data can be sent and received through the worker_send
+ * and worker_recv APIs.
+ * 
+ * Workers own and manage their own resources, including the 
+ * opened pipes and a small write buffer used for writing data
+ * to the Worker. Such owned members should never be accessed 
+ * directly.
+ * 
+ * Instead, Workers should be manipulated only by the worker_* APIs
+ * in worker.h to prevent any resource leaks.
+ * 
+ * Remember to always free this worker after use with
+ * worker_free.
+ */
 Worker *worker_create(const char *path)
 {
     if (strlen(path) >= 128)
@@ -282,7 +385,6 @@ Worker *worker_create(const char *path)
     return w;
 }
 
-
 /**
  * Closes the worker for send writes on this process.
  * Once closed, the underlying pipe can never be reopened.
@@ -301,7 +403,6 @@ void worker_close_send_write(Worker *w)
     w->fd_send_write = -1;
 }
 
-
 /**
  * Closes the worker for send reads on this process.
  * Once closed, the underlying pipe can never be reopened.
@@ -319,7 +420,6 @@ void worker_close_send_read(Worker *w)
     close(w->fd_send_read);
     w->fd_send_read = -1;
 }
-
 
 /**
  * Closes the worker for recv writes on this process.
@@ -357,6 +457,21 @@ void worker_close_recv_read(Worker *w)
     w->fd_recv_read = -1;
 }
 
+/**
+ * Send a word to the given worker.
+ * 
+ * This method returns the result of the underlying
+ * write call that writes to the input pipe created for
+ * the given worker by worker_create: the number of bytes
+ * written to the pipe.
+ * 
+ * If the word written is greater than 31 characters, it 
+ * will be truncated. This method mutates the worker
+ * due to reusing an underlying buffer for the write.
+ * 
+ * If the pipe has been closed previously,
+ * this method returns 0.
+ */
 ssize_t worker_send(Worker *w, const char *word)
 {
     if (w->fd_send_write == -1)
@@ -375,6 +490,17 @@ ssize_t worker_send(Worker *w, const char *word)
     return write(w->fd_send_write, w->sendbuf, 32);
 }
 
+/**
+ * Waits and receives for a FreqRecord from this worker.
+ *
+ * This method returns the result of the underlying
+ * read call that reads from the output pipe created for
+ * the given worker by worker_create: the number of bytes
+ * read from the pipe
+ * 
+ * If the pipe has been closed previously,
+ * this method returns 0.
+ */
 ssize_t worker_recv(const Worker *w, FreqRecord *frp)
 {
     if (w->fd_recv_read == -1)
@@ -386,20 +512,28 @@ ssize_t worker_recv(const Worker *w, FreqRecord *frp)
     return read(w->fd_recv_read, frp, sizeof(FreqRecord));
 }
 
-WorkerPoll *workerp_create_poll(Worker **ws, int n)
-{
-    WorkerPoll *poll = panic_malloc(sizeof(WorkerPoll) + n * sizeof(struct pollfd));
-
-    poll->nfds = n;
-
-    for (int i = 0; i < poll->nfds; i++)
-    {
-        poll->fds[i].fd = ws[i]->fd_recv_read;
-        poll->fds[i].events = POLLIN;
-    }
-    return poll;
-}
-
+/**
+ * Asynchronously begins the run loop for this worker. The worker will 
+ * have its pipes remained open for write and read from the calling 
+ * process/thread, except for those being used by the spawned process,
+ * which will be closed in the calling process.
+ * 
+ * Because this method closes pipes, it is imperative that a 
+ * WorkerPoll is created for this Worker before starting
+ * the loop.
+ * 
+ * Within the spawned process where the run loop executes,
+ * the worker will be closed for writes.
+ * 
+ * To stop this worker, send an EOF or close the underlying write pipe
+ * by calling worker_free
+ * 
+ * This method returns the PID of the spawned process that the loop is
+ * running on.
+ * 
+ * This method will never return on the spawned process, and instead
+ * will exit early.
+ */
 int worker_start_run(Worker *w)
 {
     int pid = fork();
@@ -428,20 +562,9 @@ int worker_start_run(Worker *w)
     return pid;
 }
 
-int workerp_poll(WorkerPoll *p)
-{
-    return poll(p->fds, p->nfds, 500);
-}
-
-int workerp_check_after_poll(const WorkerPoll *p, int i)
-{
-    if (p->fds[i].revents & POLLIN)
-    {
-        return 0;
-    }
-    return 1;
-}
-
+/**
+ * Frees the worker, releasing all memory and file descriptors.
+ */
 void worker_free(Worker *w)
 {
     // close opened pipes
@@ -454,9 +577,71 @@ void worker_free(Worker *w)
     free(w);
 }
 
-int is_sentinel(FreqRecord *frp)
+/**
+ * Creates a worker poll, parallel to the provided worker array.
+ * 
+ * Only start Workers with worker_start_run after creating a 
+ * WorkerPoll with the Worker, otherwise it may not be
+ * properly pollable due to pipes being closed.
+ * 
+ * A WorkerPoll does not own any resources besides memory and
+ * is intended to have a static lifetime once created.
+ * 
+ * However, it may be safely freed with free().
+ */
+WorkerPoll *workerp_create_poll(Worker **ws, int n)
 {
-    if (frp == NULL)
-        return 1;
-    return (frp->freq == 0 && strlen(frp->filename) == 0);
+    WorkerPoll *poll = panic_malloc(sizeof(WorkerPoll) + n * sizeof(struct pollfd));
+
+    poll->nfds = n;
+
+    for (int i = 0; i < poll->nfds; i++)
+    {
+        poll->fds[i].fd = ws[i]->fd_recv_read;
+        poll->fds[i].events = POLLIN;
+    }
+    return poll;
+}
+
+/**
+ * Poll the given WorkerPoll for available recv reads.
+ * 
+ * Ensure that all Workers on this WorkerPoll are running
+ * with worker_start_run before attempting to poll.
+ * 
+ * When data is ready to be read from a given worker, this method
+ * will return and modify the given WorkerPoll with 
+ * new status.
+ *
+ * The polling timeout is set to 500ms; this function will
+ * return before or after 500ms.
+ * 
+ * This method returns the same value as the underlying
+ * poll call.
+ * 
+ * After this method returns, call worker_check_after_poll
+ * to determine the new status of the workers.
+ */
+int workerp_poll(WorkerPoll *p)
+{
+    return poll(p->fds, p->nfds, 500);
+}
+
+/**
+ * Checks the status of workers after polled.
+ * Returns:
+ *  0 if reading from this worker will not block (perhaps data is available).
+ *  1 if reading from this worker will block (no data available).
+ * 
+ * This method relies on the parallel between the array of Workers this
+ * WorkerPoll was created for. If the Worker array changed between then and
+ * the call of this function, results will be unexpected.
+ */
+int workerp_check_after_poll(const WorkerPoll *p, int i)
+{
+    if (p->fds[i].revents & POLLIN)
+    {
+        return 0;
+    }
+    return 1;
 }

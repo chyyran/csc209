@@ -8,14 +8,14 @@
 
 #include <sys/poll.h>
 
-
 // FreqRecord APIs
 
 /**
  * This data structure is used by the workers to prepare the output
  * to be sent to the master process.
  */
-typedef struct {
+typedef struct
+{
     int freq;
     char filename[PATHLENGTH];
 } FreqRecord;
@@ -48,12 +48,10 @@ void run_worker(char *dirname, int in, int out);
  */
 int is_sentinel(FreqRecord *frp);
 
-
 /**
  * A malloc that panics and quits on on ENOMEM 
  */
 void *panic_malloc(size_t size);
-
 
 /**
  * A realloc that panics and quits on on ENOMEM 
@@ -79,7 +77,7 @@ MasterArray *ma_init();
  * 
  * - After insertion, the MasterArray is sorted.
  * - If the array is full it will replace the least frequent record.
- */ 
+ */
 void ma_insert_record(MasterArray *array, FreqRecord *frp);
 
 /**
@@ -88,7 +86,7 @@ void ma_insert_record(MasterArray *array, FreqRecord *frp);
 void ma_clear(MasterArray *array);
 
 /**
- * Prints the master array using 
+ * Prints the contents of the master array using print_freq_records
  */
 void ma_print_array(MasterArray *array);
 
@@ -96,7 +94,6 @@ void ma_print_array(MasterArray *array);
  * Retrieves a pointer to the record in the MasterArray 
  */
 FreqRecord *ma_get_record(MasterArray *array, int i);
-
 
 // --- Worker APIs
 
@@ -208,7 +205,6 @@ ssize_t worker_send(Worker *w, const char *word);
  */
 ssize_t worker_recv(const Worker *w, FreqRecord *record);
 
-
 /**
  * Creates a worker poll, parallel to the provided worker array.
  * 
@@ -241,7 +237,6 @@ WorkerPoll *workerp_create_poll(Worker **ws, int n);
  * 
  * After this method returns, call worker_check_after_poll
  * to determine the new status of the workers.
-
  */
 int workerp_poll(WorkerPoll *w);
 
@@ -258,7 +253,14 @@ int workerp_poll(WorkerPoll *w);
 int workerp_check_after_poll(const WorkerPoll *w, int i);
 
 #ifdef DEBUG
-#define DEBUG_PRINTF(...) do { if (DEBUG) { printf(__VA_ARGS__); } } while (0)
+#define DEBUG_PRINTF(...)        \
+    do                           \
+    {                            \
+        if (DEBUG)               \
+        {                        \
+            printf(__VA_ARGS__); \
+        }                        \
+    } while (0)
 #else
 #define DEBUG_PRINTF(fmt, ...)
 #endif

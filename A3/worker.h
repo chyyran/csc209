@@ -245,6 +245,7 @@ int workerp_poll(WorkerPoll *w);
  * Returns:
  *  0 if reading from this worker will not block (perhaps data is available).
  *  1 if reading from this worker will block (no data available).
+ *  -1 if reading from the worker errored.
  * 
  * This method relies on the parallel between the array of Workers this
  * WorkerPoll was created for. If the Worker array changed between then and

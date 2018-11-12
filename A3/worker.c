@@ -632,6 +632,7 @@ int workerp_poll(WorkerPoll *p)
  * Returns:
  *  0 if reading from this worker will not block (perhaps data is available).
  *  1 if reading from this worker will block (no data available).
+ *  -1 if reading from the worker errored.
  * 
  * This method relies on the parallel between the array of Workers this
  * WorkerPoll was created for. If the Worker array changed between then and
@@ -643,5 +644,11 @@ int workerp_check_after_poll(const WorkerPoll *p, int i)
     {
         return 0;
     }
+
+    if (p->fds[i].revents & POLLERR)
+    {
+        return -1;
+    }
+    
     return 1;
 }

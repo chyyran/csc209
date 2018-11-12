@@ -109,7 +109,10 @@ int main(int argc, char **argv)
     }
 
     if (closedir(dirp) < 0)
+    {
         perror("closedir");
+        exit(1);
+    }
 
     // init management objects...
     WorkerPoll *poll = workerp_create_poll(workers, nworkers);
@@ -171,12 +174,13 @@ int main(int argc, char **argv)
 
     char quit = 0;
     FreqRecord freqbuf;
+    int workerstat = 1;
     while ((read(pipefd_sentinel[0], &quit, sizeof(char))) == -1 && quit == 0)
     {
         workerp_poll(poll);
         for (int i = 0; i < nworkers; i++)
         {
-            if (!workerp_check_after_poll(poll, i))
+            if ((workerstat = workerp_check_after_poll(poll, i)) == 0)
             {
                 if (worker_recv(workers[i], &freqbuf) != 0)
                 {
@@ -190,6 +194,10 @@ int main(int argc, char **argv)
 
                     ma_insert_record(master, &freqbuf);
                 }
+            }
+            else if (workerstat == -1)
+            {
+                perror("poll: worker failed");
             }
         }
     }

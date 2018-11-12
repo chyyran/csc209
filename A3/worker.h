@@ -252,13 +252,16 @@ int workerp_poll(WorkerPoll *w);
  */
 int workerp_check_after_poll(const WorkerPoll *w, int i);
 
+
+// print macro for debug
+
 #ifdef DEBUG
 #define DEBUG_PRINTF(...)        \
     do                           \
     {                            \
         if (DEBUG)               \
         {                        \
-            printf(__VA_ARGS__); \
+            fprintf(stderr, __VA_ARGS__); \
         }                        \
     } while (0)
 #else

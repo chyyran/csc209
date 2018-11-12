@@ -86,6 +86,20 @@ int main(int argc, char **argv)
         // Otherwise ignore it.
         if (S_ISDIR(sbuf.st_mode))
         {
+
+            // Check here to avoid run_worker returning errors
+            // despite repeating code.
+            char *listfile = panic_malloc(sizeof(char) * (strlen(path) + strlen("/index") + 0x20));
+            char *namefile = panic_malloc(sizeof(char) * (strlen(path) + strlen("/filenames") + 0x20));
+
+            sprintf(listfile, "%s/%s", path, "index");
+            sprintf(namefile, "%s/%s", path, "filenames");
+
+            if(access(listfile, R_OK) == -1 || access(namefile, R_OK) == -1) {
+                perror("access: unable to access index or filenames");
+                exit(1);
+            }
+            
             // create workers...
             workers = panic_realloc(workers, sizeof(Worker *) * (nworkers + 1));
             workers[nworkers] = worker_create(path);

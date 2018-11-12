@@ -95,11 +95,12 @@ int main(int argc, char **argv)
             sprintf(listfile, "%s/%s", path, "index");
             sprintf(namefile, "%s/%s", path, "filenames");
 
-            if(access(listfile, R_OK) == -1 || access(namefile, R_OK) == -1) {
+            if (access(listfile, R_OK) == -1 || access(namefile, R_OK) == -1)
+            {
                 perror("access: unable to access index or filenames");
                 exit(1);
             }
-            
+
             // create workers...
             workers = panic_realloc(workers, sizeof(Worker *) * (nworkers + 1));
             workers[nworkers] = worker_create(path);

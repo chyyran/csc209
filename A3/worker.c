@@ -578,7 +578,7 @@ WorkerPoll *workerp_create_poll(Worker **ws, int n)
  * new status.
  *
  * The polling timeout is set to 500ms; this function will
- * return before or after 500ms.
+ * return before or immediately after 500ms have elapsed.
  * 
  * This method returns the same value as the underlying
  * poll call.

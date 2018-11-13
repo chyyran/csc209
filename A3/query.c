@@ -149,10 +149,22 @@ int main(int argc, char **argv)
         while ((readbytes = read(STDIN_FILENO, buf, MAXWORD)) <= MAXWORD && readbytes > 0)
         {
             DEBUG_PRINTF("Found data to be sent: %s\n", buf);
+            
+            // strip any newlines while sending
+            int length = strlen(buf) - 1;
+            while (length > 0 && buf[length] == '\n')
+            {
+                buf[length--] = '\0';
+            }
+            
+
             for (int i = 0; i < nworkers; i++)
             {
+                // worker_send will null terminate the string..
+                // if bigger than 32 chars
                 worker_send(workers[i], buf);
             }
+
             memset(buf, 0, 32);
         }
 

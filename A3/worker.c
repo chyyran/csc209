@@ -64,7 +64,7 @@ FreqRecord *get_word(char *word, Node *head, char **file_names)
     while (head)
     {
         // if we break
-        if (!strncmp(head->word, word, strlen(head->word)))
+        if (!strcmp(head->word, word))
         {
             break;
         }

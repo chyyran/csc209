@@ -4,7 +4,7 @@
 #include <unistd.h>
 #include <dirent.h>
 #include <sys/stat.h>
-
+#include <assert.h>
 #include "freq_list.h"
 #include "worker.h"
 
@@ -183,11 +183,7 @@ void run_worker(char *dirname, int in, int out)
  */
 typedef struct master_s
 {
-    // Buffer one record for shifting
-    FreqRecord records[MAXRECORDS + 1];
-
-    // Number of records in the array
-    int count;
+    FreqRecord records[MAXRECORDS];
 } master_s;
 
 /**
@@ -196,7 +192,6 @@ typedef struct master_s
 MasterArray *ma_init()
 {
     MasterArray *arr = panic_malloc(sizeof(master_s));
-    arr->count = 0;
 
     // clear all freq records.
     memset(arr->records, 0, sizeof(FreqRecord) * MAXRECORDS);
@@ -212,48 +207,19 @@ MasterArray *ma_init()
 void ma_insert_record(MasterArray *arr, FreqRecord *frp)
 {
 
-    DEBUG_PRINTF("inserting %s\n", frp->filename);
-
-    // nothing to do here.
-    if (arr->count == 0)
+    int next = 0;
+    while (arr->records[next].freq >= frp->freq && next < MAXRECORDS - 1)
     {
-        DEBUG_PRINTF("count 0\n");
-
-        arr->records[0] = *frp;
-        arr->count++;
+        next++;
     }
-    // arr has less than MAXRECORDS records => at least one space remaining.
-    // arr at least one,
-    else if (arr->count < MAXRECORDS)
-    {
-        DEBUG_PRINTF("count not filled yet. %d items in array\n", arr->count);
-        for (int i = 0; i < MAXRECORDS; i++)
-        {
-            if (arr->records[i].freq >= frp->freq)
-                continue;
+    
+    DEBUG_PRINTF("shift: Stopped at %d with values %d compared to %d\n", next, arr->records[next].freq, frp->freq);
 
-            DEBUG_PRINTF("shift: Stopped at %d\n", i);
-            // arr->records[i].freq < frp->freq <= arr->records[i - 1].freq
+    if (arr->records[next].freq > frp->freq)
+        return;
 
-            memmove(&arr->records[i + 1], &arr->records[i], sizeof(FreqRecord) * (MAXRECORDS - i - 1));
-            arr->records[i] = *frp;
-            arr->count++;
-            break;
-        }
-    }
-    else
-    // arr->count == MAXREECORDS
-    {
-        for (int i = 0; i < arr->count; i++)
-        {
-            if (arr->records[i].freq >= frp->freq)
-                continue;
-            DEBUG_PRINTF("full: Stopped at %d\n", i);
-
-            arr->records[i] = *frp;
-            break;
-        }
-    }
+    memmove(&arr->records[next + 1], &arr->records[next], sizeof(FreqRecord) * (MAXRECORDS - next - 1));
+    arr->records[next] = *frp;
 }
 
 /**
@@ -261,7 +227,6 @@ void ma_insert_record(MasterArray *arr, FreqRecord *frp)
  */
 void ma_clear(MasterArray *arr)
 {
-    arr->count = 0;
     memset(arr->records, 0, sizeof(arr->records));
 }
 
@@ -649,6 +614,6 @@ int workerp_check_after_poll(const WorkerPoll *p, int i)
     {
         return -1;
     }
-    
+
     return 1;
 }

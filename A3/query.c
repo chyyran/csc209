@@ -175,8 +175,10 @@ int main(int argc, char **argv)
     char quit = 0;
     FreqRecord freqbuf;
     int workerstat = 1;
+    int sentinel_count = 0;
     while ((read(pipefd_sentinel[0], &quit, sizeof(char))) == -1 && quit == 0)
     {
+
         workerp_poll(poll);
         for (int i = 0; i < nworkers; i++)
         {
@@ -187,11 +189,9 @@ int main(int argc, char **argv)
                     if (is_sentinel(&freqbuf))
                     {
                         DEBUG_PRINTF("received sentinel\n");
-                        ma_print_array(master);
-                        ma_clear(master);
+                        sentinel_count++;
                         continue;
                     }
-
                     ma_insert_record(master, &freqbuf);
                 }
             }
@@ -199,6 +199,12 @@ int main(int argc, char **argv)
             {
                 perror("poll: worker failed");
             }
+        }
+
+        if (sentinel_count >= nworkers) {
+            sentinel_count = 0;
+            ma_print_array(master);
+            ma_clear(master);
         }
     }
 

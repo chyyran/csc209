@@ -256,6 +256,8 @@ int workerp_check_after_poll(const WorkerPoll *w, int i);
 
 // print macro for debug
 
+//#define DEBUG 1
+
 #ifdef DEBUG
 #define DEBUG_PRINTF(...)        \
     do                           \

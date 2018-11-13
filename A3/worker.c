@@ -231,14 +231,6 @@ void ma_clear(MasterArray *arr)
 }
 
 /**
- * Retrieves a pointer to the record in the MasterArray 
- */
-FreqRecord *ma_get_record(MasterArray *arr, int i)
-{
-    return &arr->records[i];
-}
-
-/**
  * Prints the contents of the master array using print_freq_records
  */
 void ma_print_array(MasterArray *arr)

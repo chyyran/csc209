@@ -90,11 +90,6 @@ void ma_clear(MasterArray *array);
  */
 void ma_print_array(MasterArray *array);
 
-/**
- * Retrieves a pointer to the record in the MasterArray 
- */
-FreqRecord *ma_get_record(MasterArray *array, int i);
-
 // --- Worker APIs
 
 /**

@@ -131,7 +131,7 @@ void run_worker(char *dirname, int in, int out)
 
     // some padding bytes for safety
     // 32 seems like a good number.
-    
+
     char *listfile = panic_malloc(sizeof(char) * (strlen(dirname) + strlen("/index") + 0x20));
     char *namefile = panic_malloc(sizeof(char) * (strlen(dirname) + strlen("/filenames") + 0x20));
 
@@ -172,8 +172,6 @@ void run_worker(char *dirname, int in, int out)
     DEBUG_PRINTF("all gone! %d in: %d, out: %d buf: %s\n", readbytes, in, out, buf);
     free(listfile);
     free(namefile);
-
-    return;
 }
 
 // --- Master Array APIs

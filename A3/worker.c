@@ -179,6 +179,8 @@ void run_worker(char *dirname, int in, int out)
 /**
  * Struct definition for opaque type MasterArray
  * 
+ * See worker.h for MasterArray typedef
+ * 
  * Used by the main program to collect search results.
  * Use the ma_* APIs to manipulate this array. 
  */
@@ -244,6 +246,8 @@ void ma_print_array(MasterArray *arr)
 /**
  * Struct definition for opaque type Worker.
  * 
+ * See worker.h for Worker typedef
+
  * Represents a worker that will run a search on a different 
  * process.
  * 
@@ -270,6 +274,8 @@ typedef struct worker_s
 
 /**
  * Struct definition for Opaque type WorkerPoll.
+ * 
+ * See worker.h for WorkerPoll typedef
  * 
  * Represents a pollable collection of running workers.
  * 

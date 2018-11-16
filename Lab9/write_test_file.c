@@ -20,10 +20,10 @@ int main(int argc, char **argv) {
 
     // TODO: complete this program according its description above.
 
-
-
-
-
+    for (int i = 0; i < 100; i++)
+    {
+        fwrite(&i, 1, 1, fp);
+    }
     fclose(fp);
     return 0;
 }

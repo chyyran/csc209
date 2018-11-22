@@ -1,0 +1,893 @@
+Script started on 2018-11-21 23:22:06-05:00
+[1m[3m%[23m[1m[0m                                                                               k..hanronn/Lab10\[0m[23m[24m[Jλ ~/coding/csc209/chanronn/Lab10/ [32mmaster*[00m [00m[K[?1h=[?2004hd ggdb bufserver.bufserver[9D/bufserver[9D[?1l>[?2004l
+kgdb\GNU gdb (GDB) Fedora 8.2-3.fc29
+Copyright (C) 2018 Free Software Foundation, Inc.
+License GPLv3+: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>
+This is free software: you are free to change and redistribute it.
+There is NO WARRANTY, to the extent permitted by law.
+Type "show copying" and "show warranty" for details.
+This GDB was configured as "x86_64-redhat-linux-gnu".
+Type "show configuration" for configuration details.
+For bug reporting instructions, please see:
+<http://www.gnu.org/software/gdb/bugs/>.
+Find the GDB manual and other documentation resources online at:
+    <http://www.gnu.org/software/gdb/documentation/>.
+
+For help, type "help".
+Type "apropos word" to search for commands related to "word"...
+Reading symbols from ./bufserver...done.
+(gdb) [K(gdb) break main
+Breakpoint 1 at 0x40126e: file bufserver.c, line 21.
+(gdb) [K(gdb) watch buf
+No symbol "buf" in current context.
+(gdb) n
+The program is not being run.
+(gdb) run
+Starting program: /home/chyran/coding/csc209/chanronn/Lab10/bufserver 
+Missing separate debuginfos, use: dnf debuginfo-install glibc-2.28-17.fc29.x86_64
+
+Breakpoint 1, main () at bufserver.c:21
+21	    setbuf(stdout, NULL);
+(gdb) n
+23	    struct sockaddr_in *self = init_server_addr(PORT);
+(gdb) watch[K[K[K[K[K
+24	    int listenfd = set_up_server_socket(self, 5);
+(gdb) 
+27	        int fd = accept_connection(listenfd);
+(gdb) 
+Waiting for a new connection...
+New connection accepted from 127.0.0.1:59012
+28	        if (fd < 0) {
+(gdb) n
+33	        char buf[BUFSIZE] = {'\0'};
+(gdb) 
+34	        int inbuf = 0;           // How many bytes currently in buffer?
+(gdb) 
+35	        int room = sizeof(buf);  // How many bytes remaining in buffer?
+(gdb) 
+36	        char *after = buf;       // Pointer to position after the data in buf
+(gdb) 
+39	        while ((nbytes = read(fd, after, room)) > 0) {
+(gdb) watch buf
+Watchpoint 2: buf
+(gdb) watch inbuf
+Hardware watchpoint 3: inbuf
+(gdb) 
+Hardware watchpoint 4: inbuf
+(gdb) 
+Hardware watchpoint 5: inbuf
+(gdb) 
+Hardware watchpoint 6: inbuf
+(gdb) 
+Hardware watchpoint 7: inbuf
+(gdb) watch inbuf[C[C[C[C[C[C[Kn
+
+Watchpoint 2: buf
+
+Old value = '\000' <repeats 29 times>
+New value = "A stitch in time\r\nA stitch in "
+0x00007ffff7ec4ea5 in read () from /lib64/libc.so.6
+(gdb) n
+Single stepping until exit from function read,
+which has no line number information.
+main () at bufserver.c:39
+39	        while ((nbytes = read(fd, after, room)) > 0) {
+(gdb) n
+41	            inbuf += nbytes;
+(gdb) n
+
+Hardware watchpoint 3: inbuf
+
+Old value = 0
+New value = 30
+
+Hardware watchpoint 4: inbuf
+
+Old value = 0
+New value = 30
+
+Hardware watchpoint 5: inbuf
+
+Old value = 0
+New value = 30
+
+Hardware watchpoint 6: inbuf
+--Type <RET> for more, q to quit, c to continue without paging--
+
+Old value = 0
+New value = 30
+
+Hardware watchpoint 7: inbuf
+
+Old value = 0
+New value = 30
+main () at bufserver.c:51
+51	            while ((where = find_network_newline(buf, inbuf)) > 0) {
+(gdb) 
+(gdb) n
+58	                buf[where - 2] = '\0'; // terminate at \r
+(gdb) n
+
+Watchpoint 2: buf
+
+Old value = "A stitch in time\r\nA stitch in "
+New value = "A stitch in time\000\nA stitch in "
+main () at bufserver.c:60
+60	                printf("Next message: %s\n", buf);
+(gdb) n
+Next message: A stitch in time
+71	                memset(buf, 0, where - 1);
+(gdb) n
+
+Watchpoint 2: buf
+
+Old value = "A stitch in time\000\nA stitch in "
+New value = "A", '\000' <repeats 16 times>, "\nA stitch in "
+0x00007ffff7f393c5 in __memset_avx2_unaligned_erms () from /lib64/libc.so.6
+(gdb) n
+Single stepping until exit from function __memset_avx2_unaligned_erms,
+which has no line number information.
+
+Watchpoint 2: buf
+
+Old value = "A", '\000' <repeats 16 times>, "\nA stitch in "
+New value = '\000' <repeats 17 times>, "\nA stitch in "
+0x00007ffff7f393c9 in __memset_avx2_unaligned_erms () from /lib64/libc.so.6
+(gdb) n
+Single stepping until exit from function __memset_avx2_unaligned_erms,
+which has no line number information.
+main () at bufserver.c:72
+72	                memmove(buf, (buf + where), inbuf - where);
+(gdb) n
+
+Watchpoint 2: buf
+
+Old value = '\000' <repeats 17 times>, "\nA stitch in "
+New value = "\000\000\000\000itch in \000\000\000\000\000\nA stitch in "
+0x00007ffff7f38ef4 in __memmove_avx_unaligned_erms () from /lib64/libc.so.6
+(gdb) n
+Single stepping until exit from function __memmove_avx_unaligned_erms,
+which has no line number information.
+
+Watchpoint 2: buf
+
+Old value = "\000\000\000\000itch in \000\000\000\000\000\nA stitch in "
+New value = "A stitch in \000\000\000\000\000\nA stitch in "
+0x00007ffff7f38ef7 in __memmove_avx_unaligned_erms () from /lib64/libc.so.6
+(gdb) n
+Single stepping until exit from function __memmove_avx_unaligned_erms,
+which has no line number information.
+main () at bufserver.c:74
+74	                inbuf = inbuf - where;
+(gdb) n
+
+Hardware watchpoint 3: inbuf
+
+Old value = 30
+New value = 12
+
+Hardware watchpoint 4: inbuf
+
+Old value = 30
+New value = 12
+
+Hardware watchpoint 5: inbuf
+
+Old value = 30
+New value = 12
+
+Hardware watchpoint 6: inbuf
+--Type <RET> for more, q to quit, c to continue without paging--n
+
+Old value = 30
+New value = 12
+
+Hardware watchpoint 7: inbuf
+
+Old value = 30
+New value = 12
+main () at bufserver.c:51
+51	            while ((where = find_network_newline(buf, inbuf)) > 0) {
+(gdb) n
+77	            after = (buf + inbuf);
+(gdb) n
+78	            room =  sizeof(buf) - inbuf;
+(gdb) n
+39	        while ((nbytes = read(fd, after, room)) > 0) {
+(gdb) n
+
+Watchpoint 2: buf
+
+Old value = "A stitch in \000\000\000\000\000\nA stitch in "
+New value = "A stitch in time\r\nA stitch in "
+0x00007ffff7ec4ea5 in read () from /lib64/libc.so.6
+(gdb) n
+Single stepping until exit from function read,
+which has no line number information.
+main () at bufserver.c:39
+39	        while ((nbytes = read(fd, after, room)) > 0) {
+(gdb) n
+41	            inbuf += nbytes;
+(gdb) n
+
+Hardware watchpoint 3: inbuf
+
+Old value = 12
+New value = 30
+
+Hardware watchpoint 4: inbuf
+
+Old value = 12
+New value = 30
+
+Hardware watchpoint 5: inbuf
+
+Old value = 12
+New value = 30
+
+Hardware watchpoint 6: inbuf
+--Type <RET> for more, q to quit, c to continue without paging--n
+
+Old value = 12
+New value = 30
+
+Hardware watchpoint 7: inbuf
+
+Old value = 12
+New value = 30
+main () at bufserver.c:51
+51	            while ((where = find_network_newline(buf, inbuf)) > 0) {
+(gdb) n
+58	                buf[where - 2] = '\0'; // terminate at \r
+(gdb) n
+
+Watchpoint 2: buf
+
+Old value = "A stitch in time\r\nA stitch in "
+New value = "A stitch in time\000\nA stitch in "
+main () at bufserver.c:60
+60	                printf("Next message: %s\n", buf);
+(gdb) n
+nNext message: A stitch in time
+71	                memset(buf, 0, where - 1);
+(gdb) n
+
+Watchpoint 2: buf
+
+Old value = "A stitch in time\000\nA stitch in "
+New value = "A", '\000' <repeats 16 times>, "\nA stitch in "
+0x00007ffff7f393c5 in __memset_avx2_unaligned_erms () from /lib64/libc.so.6
+(gdb) 
+Single stepping until exit from function __memset_avx2_unaligned_erms,
+which has no line number information.
+
+Watchpoint 2: buf
+
+Old value = "A", '\000' <repeats 16 times>, "\nA stitch in "
+New value = '\000' <repeats 17 times>, "\nA stitch in "
+0x00007ffff7f393c9 in __memset_avx2_unaligned_erms () from /lib64/libc.so.6
+(gdb) 
+Single stepping until exit from function __memset_avx2_unaligned_erms,
+which has no line number information.
+main () at bufserver.c:72
+72	                memmove(buf, (buf + where), inbuf - where);
+(gdb) 
+
+Watchpoint 2: buf
+
+Old value = '\000' <repeats 17 times>, "\nA stitch in "
+New value = "\000\000\000\000itch in \000\000\000\000\000\nA stitch in "
+0x00007ffff7f38ef4 in __memmove_avx_unaligned_erms () from /lib64/libc.so.6
+(gdb) 
+Single stepping until exit from function __memmove_avx_unaligned_erms,
+which has no line number information.
+
+Watchpoint 2: buf
+
+Old value = "\000\000\000\000itch in \000\000\000\000\000\nA stitch in "
+New value = "A stitch in \000\000\000\000\000\nA stitch in "
+0x00007ffff7f38ef7 in __memmove_avx_unaligned_erms () from /lib64/libc.so.6
+(gdb) 
+Single stepping until exit from function __memmove_avx_unaligned_erms,
+which has no line number information.
+main () at bufserver.c:74
+74	                inbuf = inbuf - where;
+(gdb) n
+
+Hardware watchpoint 3: inbuf
+
+Old value = 30
+New value = 12
+
+Hardware watchpoint 4: inbuf
+
+Old value = 30
+New value = 12
+
+Hardware watchpoint 5: inbuf
+
+Old value = 30
+New value = 12
+
+Hardware watchpoint 6: inbuf
+--Type <RET> for more, q to quit, c to continue without paging--c
+
+Old value = 30
+New value = 12
+
+Hardware watchpoint 7: inbuf
+
+Old value = 30
+New value = 12
+main () at bufserver.c:51
+51	            while ((where = find_network_newline(buf, inbuf)) > 0) {
+(gdb) 
+(gdb) 
+(gdb) n
+77	            after = (buf + inbuf);
+(gdb) n
+78	            room =  sizeof(buf) - inbuf;
+(gdb) n
+39	        while ((nbytes = read(fd, after, room)) > 0) {
+(gdb) n
+
+Watchpoint 2: buf
+
+Old value = "A stitch in \000\000\000\000\000\nA stitch in "
+New value = "A stitch in time\r\nA stitch in "
+0x00007ffff7ec4ea5 in read () from /lib64/libc.so.6
+(gdb) n
+Single stepping until exit from function read,
+which has no line number information.
+main () at bufserver.c:39
+39	        while ((nbytes = read(fd, after, room)) > 0) {
+(gdb) n
+41	            inbuf += nbytes;
+(gdb) n
+
+Hardware watchpoint 3: inbuf
+
+Old value = 12
+New value = 30
+
+Hardware watchpoint 4: inbuf
+
+Old value = 12
+New value = 30
+
+Hardware watchpoint 5: inbuf
+
+Old value = 12
+New value = 30
+
+Hardware watchpoint 6: inbuf
+--Type <RET> for more, q to quit, c to continue without paging--n
+
+Old value = 12
+New value = 30
+
+Hardware watchpoint 7: inbuf
+
+Old value = 12
+New value = 30
+main () at bufserver.c:51
+51	            while ((where = find_network_newline(buf, inbuf)) > 0) {
+(gdb) n
+58	                buf[where - 2] = '\0'; // terminate at \r
+(gdb) n
+
+Watchpoint 2: buf
+
+Old value = "A stitch in time\r\nA stitch in "
+New value = "A stitch in time\000\nA stitch in "
+main () at bufserver.c:60
+60	                printf("Next message: %s\n", buf);
+(gdb) n
+n
+Next message: A stitch in time
+n71	                memset(buf, 0, where - 1);
+(gdb) n
+
+Watchpoint 2: buf
+
+Old value = "A stitch in time\000\nA stitch in "
+New value = "A", '\000' <repeats 16 times>, "\nA stitch in "
+0x00007ffff7f393c5 in __memset_avx2_unaligned_erms () from /lib64/libc.so.6
+(gdb) n
+Single stepping until exit from function __memset_avx2_unaligned_erms,
+which has no line number information.
+
+Watchpoint 2: buf
+
+Old value = "A", '\000' <repeats 16 times>, "\nA stitch in "
+New value = '\000' <repeats 17 times>, "\nA stitch in "
+0x00007ffff7f393c9 in __memset_avx2_unaligned_erms () from /lib64/libc.so.6
+(gdb) n
+Single stepping until exit from function __memset_avx2_unaligned_erms,
+which has no line number information.
+main () at bufserver.c:72
+72	                memmove(buf, (buf + where), inbuf - where);
+(gdb) n
+
+Watchpoint 2: buf
+
+Old value = '\000' <repeats 17 times>, "\nA stitch in "
+New value = "\000\000\000\000itch in \000\000\000\000\000\nA stitch in "
+0x00007ffff7f38ef4 in __memmove_avx_unaligned_erms () from /lib64/libc.so.6
+(gdb) n
+Single stepping until exit from function __memmove_avx_unaligned_erms,
+which has no line number information.
+
+Watchpoint 2: buf
+
+Old value = "\000\000\000\000itch in \000\000\000\000\000\nA stitch in "
+New value = "A stitch in \000\000\000\000\000\nA stitch in "
+0x00007ffff7f38ef7 in __memmove_avx_unaligned_erms () from /lib64/libc.so.6
+(gdb) n
+Single stepping until exit from function __memmove_avx_unaligned_erms,
+which has no line number information.
+main () at bufserver.c:74
+74	                inbuf = inbuf - where;
+(gdb) n
+
+Hardware watchpoint 3: inbuf
+
+Old value = 30
+New value = 12
+
+Hardware watchpoint 4: inbuf
+
+Old value = 30
+New value = 12
+
+Hardware watchpoint 5: inbuf
+
+Old value = 30
+New value = 12
+
+Hardware watchpoint 6: inbuf
+--Type <RET> for more, q to quit, c to continue without paging--n
+
+Old value = 30
+New value = 12
+
+Hardware watchpoint 7: inbuf
+
+Old value = 30
+New value = 12
+main () at bufserver.c:51
+51	            while ((where = find_network_newline(buf, inbuf)) > 0) {
+(gdb) n
+77	            after = (buf + inbuf);
+(gdb) n
+78	            room =  sizeof(buf) - inbuf;
+(gdb) n
+39	        while ((nbytes = read(fd, after, room)) > 0) {
+(gdb) n
+
+Watchpoint 2: buf
+
+Old value = "A stitch in \000\000\000\000\000\nA stitch in "
+New value = "A stitch in time\r\nA stitch in "
+0x00007ffff7ec4ea5 in read () from /lib64/libc.so.6
+(gdb) n
+Single stepping until exit from function read,
+which has no line number information.
+main () at bufserver.c:39
+39	        while ((nbytes = read(fd, after, room)) > 0) {
+(gdb) n
+41	            inbuf += nbytes;
+(gdb) n
+
+Hardware watchpoint 3: inbuf
+
+Old value = 12
+New value = 30
+
+Hardware watchpoint 4: inbuf
+
+Old value = 12
+New value = 30
+
+Hardware watchpoint 5: inbuf
+
+Old value = 12
+New value = 30
+
+Hardware watchpoint 6: inbuf
+--Type <RET> for more, q to quit, c to continue without paging--n
+
+Old value = 12
+New value = 30
+
+Hardware watchpoint 7: inbuf
+
+Old value = 12
+New value = 30
+main () at bufserver.c:51
+51	            while ((where = find_network_newline(buf, inbuf)) > 0) {
+(gdb) n
+58	                buf[where - 2] = '\0'; // terminate at \r
+(gdb) n
+
+Watchpoint 2: buf
+
+Old value = "A stitch in time\r\nA stitch in "
+New value = "A stitch in time\000\nA stitch in "
+main () at bufserver.c:60
+60	                printf("Next message: %s\n", buf);
+(gdb) n
+n
+Next message: A stitch in time
+71	                memset(buf, 0, where - 1);
+(gdb) n
+
+Watchpoint 2: buf
+
+Old value = "A stitch in time\000\nA stitch in "
+New value = "A", '\000' <repeats 16 times>, "\nA stitch in "
+0x00007ffff7f393c5 in __memset_avx2_unaligned_erms () from /lib64/libc.so.6
+(gdb) n
+Single stepping until exit from function __memset_avx2_unaligned_erms,
+which has no line number information.
+
+Watchpoint 2: buf
+
+Old value = "A", '\000' <repeats 16 times>, "\nA stitch in "
+New value = '\000' <repeats 17 times>, "\nA stitch in "
+0x00007ffff7f393c9 in __memset_avx2_unaligned_erms () from /lib64/libc.so.6
+(gdb) n
+Single stepping until exit from function __memset_avx2_unaligned_erms,
+which has no line number information.
+main () at bufserver.c:72
+72	                memmove(buf, (buf + where), inbuf - where);
+(gdb) n
+
+Watchpoint 2: buf
+
+Old value = '\000' <repeats 17 times>, "\nA stitch in "
+New value = "\000\000\000\000itch in \000\000\000\000\000\nA stitch in "
+0x00007ffff7f38ef4 in __memmove_avx_unaligned_erms () from /lib64/libc.so.6
+(gdb) n
+Single stepping until exit from function __memmove_avx_unaligned_erms,
+which has no line number information.
+
+Watchpoint 2: buf
+
+Old value = "\000\000\000\000itch in \000\000\000\000\000\nA stitch in "
+New value = "A stitch in \000\000\000\000\000\nA stitch in "
+0x00007ffff7f38ef7 in __memmove_avx_unaligned_erms () from /lib64/libc.so.6
+(gdb) n
+Single stepping until exit from function __memmove_avx_unaligned_erms,
+which has no line number information.
+main () at bufserver.c:74
+74	                inbuf = inbuf - where;
+(gdb) n
+
+Hardware watchpoint 3: inbuf
+
+Old value = 30
+New value = 12
+
+Hardware watchpoint 4: inbuf
+
+Old value = 30
+New value = 12
+
+Hardware watchpoint 5: inbuf
+
+Old value = 30
+New value = 12
+
+Hardware watchpoint 6: inbuf
+--Type <RET> for more, q to quit, c to continue without paging--n
+
+Old value = 30
+New value = 12
+
+Hardware watchpoint 7: inbuf
+
+Old value = 30
+New value = 12
+main () at bufserver.c:51
+51	            while ((where = find_network_newline(buf, inbuf)) > 0) {
+(gdb) n
+77	            after = (buf + inbuf);
+(gdb) n
+78	            room =  sizeof(buf) - inbuf;
+(gdb) n
+39	        while ((nbytes = read(fd, after, room)) > 0) {
+(gdb) n
+
+Watchpoint 2: buf
+
+Old value = "A stitch in \000\000\000\000\000\nA stitch in "
+New value = "A stitch in time\r\nA stitch in "
+0x00007ffff7ec4ea5 in read () from /lib64/libc.so.6
+(gdb) n
+Single stepping until exit from function read,
+which has no line number information.
+main () at bufserver.c:39
+39	        while ((nbytes = read(fd, after, room)) > 0) {
+(gdb) n
+41	            inbuf += nbytes;
+(gdb) n
+
+Hardware watchpoint 3: inbuf
+
+Old value = 12
+New value = 18
+
+Hardware watchpoint 4: inbuf
+
+Old value = 12
+New value = 18
+
+Hardware watchpoint 5: inbuf
+
+Old value = 12
+New value = 18
+
+Hardware watchpoint 6: inbuf
+--Type <RET> for more, q to quit, c to continue without paging--n
+
+Old value = 12
+New value = 18
+
+Hardware watchpoint 7: inbuf
+
+Old value = 12
+New value = 18
+main () at bufserver.c:51
+51	            while ((where = find_network_newline(buf, inbuf)) > 0) {
+(gdb) n
+58	                buf[where - 2] = '\0'; // terminate at \r
+(gdb) 
+
+Watchpoint 2: buf
+
+Old value = "A stitch in time\r\nA stitch in "
+New value = "A stitch in time\000\nA stitch in "
+main () at bufserver.c:60
+60	                printf("Next message: %s\n", buf);
+(gdb) 
+Next message: A stitch in time
+71	                memset(buf, 0, where - 1);
+(gdb) 
+
+Watchpoint 2: buf
+
+Old value = "A stitch in time\000\nA stitch in "
+New value = "A", '\000' <repeats 16 times>, "\nA stitch in "
+0x00007ffff7f393c5 in __memset_avx2_unaligned_erms () from /lib64/libc.so.6
+(gdb) 
+Single stepping until exit from function __memset_avx2_unaligned_erms,
+which has no line number information.
+
+Watchpoint 2: buf
+
+Old value = "A", '\000' <repeats 16 times>, "\nA stitch in "
+New value = '\000' <repeats 17 times>, "\nA stitch in "
+0x00007ffff7f393c9 in __memset_avx2_unaligned_erms () from /lib64/libc.so.6
+(gdb) 
+Single stepping until exit from function __memset_avx2_unaligned_erms,
+which has no line number information.
+main () at bufserver.c:72
+72	                memmove(buf, (buf + where), inbuf - where);
+(gdb) 
+74	                inbuf = inbuf - where;
+(gdb) 
+
+Hardware watchpoint 3: inbuf
+
+Old value = 18
+New value = 0
+
+Hardware watchpoint 4: inbuf
+
+Old value = 18
+New value = 0
+
+Hardware watchpoint 5: inbuf
+
+Old value = 18
+New value = 0
+
+Hardware watchpoint 6: inbuf
+--Type <RET> for more, q to quit, c to continue without paging--[K--Type <RET> for more, q to quit, c to continue without paging--[K--Type <RET> for more, q to quit, c to continue without paging--n
+
+Old value = 18
+New value = 0
+
+Hardware watchpoint 7: inbuf
+
+Old value = 18
+New value = 0
+main () at bufserver.c:51
+51	            while ((where = find_network_newline(buf, inbuf)) > 0) {
+(gdb) 
+(gdb) 
+(gdb) n
+77	            after = (buf + inbuf);
+(gdb) n
+78	            room =  sizeof(buf) - inbuf;
+(gdb) n
+39	        while ((nbytes = read(fd, after, room)) > 0) {
+(gdb) n
+81	        close(fd);
+(gdb) n
+n27	        int fd = accept_connection(listenfd);
+(gdb) n
+Waiting for a new connection...
+n
+New connection accepted from 127.0.0.1:59014
+28	        if (fd < 0) {
+(gdb) n
+33	        char buf[BUFSIZE] = {'\0'};
+(gdb) n
+
+Watchpoint 2: buf
+
+Old value = '\000' <repeats 17 times>, "\nA stitch in "
+New value = '\000' <repeats 24 times>, "ch in "
+0x00000000004012d3 in main () at bufserver.c:33
+33	        char buf[BUFSIZE] = {'\0'};
+(gdb) n
+
+Watchpoint 2: buf
+
+Old value = '\000' <repeats 24 times>, "ch in "
+New value = '\000' <repeats 28 times>, "n "
+0x00000000004012da in main () at bufserver.c:33
+33	        char buf[BUFSIZE] = {'\0'};
+(gdb) n
+
+Watchpoint 2: buf
+
+Old value = '\000' <repeats 28 times>, "n "
+New value = '\000' <repeats 29 times>
+main () at bufserver.c:34
+34	        int inbuf = 0;           // How many bytes currently in buffer?
+(gdb) n
+35	        int room = sizeof(buf);  // How many bytes remaining in buffer?
+(gdb) n
+36	        char *after = buf;       // Pointer to position after the data in buf
+(gdb) n
+39	        while ((nbytes = read(fd, after, room)) > 0) {
+(gdb) n
+
+Watchpoint 2: buf
+
+Old value = '\000' <repeats 29 times>
+New value = "A stitch in time\r\nA stitch in "
+0x00007ffff7ec4ea5 in read () from /lib64/libc.so.6
+(gdb) n
+Single stepping until exit from function read,
+which has no line number information.
+main () at bufserver.c:39
+39	        while ((nbytes = read(fd, after, room)) > 0) {
+(gdb) n
+41	            inbuf += nbytes;
+(gdb) n
+
+Hardware watchpoint 3: inbuf
+
+Old value = 0
+New value = 30
+
+Hardware watchpoint 4: inbuf
+
+Old value = 0
+New value = 30
+
+Hardware watchpoint 5: inbuf
+
+Old value = 0
+New value = 30
+
+Hardware watchpoint 6: inbuf
+
+Old value = 0
+New value = 30
+
+Hardware watchpoint 7: inbuf
+
+Old value = 0
+New value = 30
+main () at bufserver.c:51
+51	            while ((where = find_network_newline(buf, inbuf)) > 0) {
+(gdb) n
+58	                buf[where - 2] = '\0'; // terminate at \r
+(gdb) n
+
+Watchpoint 2: buf
+
+Old value = "A stitch in time\r\nA stitch in "
+New value = "A stitch in time\000\nA stitch in "
+main () at bufserver.c:60
+60	                printf("Next message: %s\n", buf);
+(gdb) n
+n
+Next message: A stitch in time
+71	                memset(buf, 0, where - 1);
+(gdb) n
+n
+Watchpoint 2: buf
+
+Old value = "A stitch in time\000\nA stitch in "
+New value = "A", '\000' <repeats 16 times>, "\nA stitch in "
+0x00007ffff7f393c5 in __memset_avx2_unaligned_erms () from /lib64/libc.so.6
+(gdb) n
+Single stepping until exit from function __memset_avx2_unaligned_erms,
+which has no line number information.
+
+Watchpoint 2: buf
+
+Old value = "A", '\000' <repeats 16 times>, "\nA stitch in "
+New value = '\000' <repeats 17 times>, "\nA stitch in "
+0x00007ffff7f393c9 in __memset_avx2_unaligned_erms () from /lib64/libc.so.6
+(gdb) n
+Single stepping until exit from function __memset_avx2_unaligned_erms,
+which has no line number information.
+main () at bufserver.c:72
+72	                memmove(buf, (buf + where), inbuf - where);
+(gdb) n
+
+Watchpoint 2: buf
+
+Old value = '\000' <repeats 17 times>, "\nA stitch in "
+New value = "\000\000\000\000itch in \000\000\000\000\000\nA stitch in "
+0x00007ffff7f38ef4 in __memmove_avx_unaligned_erms () from /lib64/libc.so.6
+(gdb) n
+Single stepping until exit from function __memmove_avx_unaligned_erms,
+which has no line number information.
+
+Watchpoint 2: buf
+
+Old value = "\000\000\000\000itch in \000\000\000\000\000\nA stitch in "
+New value = "A stitch in \000\000\000\000\000\nA stitch in "
+0x00007ffff7f38ef7 in __memmove_avx_unaligned_erms () from /lib64/libc.so.6
+(gdb) n
+Single stepping until exit from function __memmove_avx_unaligned_erms,
+which has no line number information.
+main () at bufserver.c:74
+74	                inbuf = inbuf - where;
+(gdb) n
+
+Hardware watchpoint 3: inbuf
+
+Old value = 30
+New value = 12
+
+Hardware watchpoint 4: inbuf
+
+Old value = 30
+New value = 12
+
+Hardware watchpoint 5: inbuf
+
+Old value = 30
+New value = 12
+
+Hardware watchpoint 6: inbuf
+
+Old value = 30
+New value = 12
+
+Hardware watchpoint 7: inbuf
+
+Old value = 30
+New value = 12
+main () at bufserver.c:51
+51	            while ((where = find_network_newline(buf, inbuf)) > 0) {
+(gdb) n
+77	            after = (buf + inbuf);
+(gdb) q
+A debugging session is active.
+
+	Inferior 1 [process 21312] will be killed.
+
+Quit anyway? (y or n) y
+[1m[3m%[23m[1m[0m                                                                                 k..hanronn/Lab10\[0m[23m[24m[Jλ ~/coding/csc209/chanronn/Lab10/ [32mmaster*[00m [00m[K[?1h=[?2004h[0m[23m[24m[Jλ ~/coding/csc209/chanronn/Lab10/ [32mmaster*[00m [00meexit[?1l>[?2004l
+kexit\
+Script done on 2018-11-21 23:27:13-05:00

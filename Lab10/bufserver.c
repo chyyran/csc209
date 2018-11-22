@@ -38,8 +38,7 @@ int main() {
         int nbytes;
         while ((nbytes = read(fd, after, room)) > 0) {
             // Step 1: update inbuf (how many bytes were just added?)
-
-
+            inbuf += nbytes;
             int where;
 
             // Step 2: the loop condition below calls find_network_newline
@@ -56,6 +55,7 @@ int main() {
                 // Be sure to put a '\0' in the correct place first;
                 // otherwise you'll get junk in the output.
 
+                buf[where - 2] = '\0'; // terminate at \r
 
                 printf("Next message: %s\n", buf);
                 // Note that we could have also used write to avoid having to
@@ -68,10 +68,14 @@ int main() {
                 // of the buffer.  A loop can do it, or you can use memmove.
                 // memmove(destination, source, number_of_bytes)
 
+                memset(buf, 0, where - 1);
+                memmove(buf, (buf + where), inbuf - where);
 
+                inbuf = inbuf - where;
             }
             // Step 5: update after and room, in preparation for the next read.
-
+            after = (buf + inbuf);
+            room =  sizeof(buf) - inbuf;
 
         }
         close(fd);
@@ -90,5 +94,13 @@ int main() {
  * Definitely do not use strchr or other string functions to search here. (Why not?)
  */
 int find_network_newline(const char *buf, int n) {
+
+    for (int i = 0; i < n - 1; i++)
+    {
+        // if buf[i] is not CR, then we don't care about buf[i+1] 
+        // if we're at buf[n -1], and buf[n-1] is not CR, then we don't care if buf[n] is CR.
+
+        if (buf[i] == '\r' && buf[i + 1] == '\n') return i + 2; //LF is at i+1
+    }
     return -1;
 }

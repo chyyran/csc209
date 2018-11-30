@@ -102,6 +102,11 @@ int main(void)
         if (FD_ISSET(sock_fd, &listen_fds))
         {
             num_read = read(sock_fd, buf, BUF_SIZE);
+            if (num_read == 0) {
+                printf("server closed connection\n");
+                close(sock_fd);
+                exit(1);
+            }
             buf[num_read] = '\0';
             printf("Received from server: %s", buf);
         }

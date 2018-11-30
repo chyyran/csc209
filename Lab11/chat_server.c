@@ -15,7 +15,6 @@
 #define MAX_CONNECTIONS 12
 #define BUF_SIZE 128
 
-
 struct sockname {
     int sock_fd;
     char *username;
@@ -45,8 +44,14 @@ int accept_connection(int fd, struct sockname *usernames) {
         exit(1);
     }
 
+    char* userbuf = malloc(sizeof(char) * (BUF_SIZE + 1));
+    int num_read = read(client_fd, userbuf, BUF_SIZE);
+
+    userbuf[num_read-1] = '\0';
+   
+
     usernames[user_index].sock_fd = client_fd;
-    usernames[user_index].username = NULL;
+    usernames[user_index].username = userbuf;
     return client_fd;
 }
 
@@ -56,13 +61,22 @@ int accept_connection(int fd, struct sockname *usernames) {
  */
 int read_from(int client_index, struct sockname *usernames) {
     int fd = usernames[client_index].sock_fd;
-    char buf[BUF_SIZE + 1];
-
+    char buf[BUF_SIZE + 1] = {'\0'};
+    char prefixed_buf[BUF_SIZE + 1 + strlen(usernames[client_index].username)];
     int num_read = read(fd, &buf, BUF_SIZE);
     buf[num_read] = '\0';
-    if (num_read == 0 || write(fd, buf, strlen(buf)) != strlen(buf)) {
+    sprintf(prefixed_buf, "%s:%s", usernames[client_index].username, buf);
+    if (num_read == 0 || write(fd, prefixed_buf, strlen(prefixed_buf)) != strlen(prefixed_buf)) {
         usernames[client_index].sock_fd = -1;
         return fd;
+    }
+
+    for (int i = 0; i < MAX_CONNECTIONS; i++) 
+    {
+        if (i == client_index) continue;
+        if (usernames[i].sock_fd != -1) {
+            write(usernames[i].sock_fd, prefixed_buf, strlen(prefixed_buf));
+        }
     }
 
     return 0;

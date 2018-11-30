@@ -44,9 +44,9 @@ int remove_ta(Ta **ta_list_ptr, char *ta_name);
 int next_overall(char *ta_name, Ta **ta_list_ptr, Student **stu_list_ptr);
 
 // list currently being served by current TAs
-void print_currently_serving(Ta *ta_list);
+char *print_currently_serving(Ta *ta_list);
 
 // list all students in queue 
-void print_full_queue(Student *stu_list);
+char *print_full_queue(Student *stu_list);
 
 #endif

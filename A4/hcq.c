@@ -4,6 +4,7 @@
 #include <string.h>
 #include <time.h>
 #include "hcq.h"
+#include "dynstr.h"
 #define INPUT_BUFFER_SIZE 256
 #define OUT_BUF_SIZE 1024
 
@@ -11,9 +12,12 @@
  * Return a pointer to the struct student with name stu_name
  * or NULL if no student with this name exists in the stu_list
  */
-Student *find_student(Student *stu_list, char *student_name) {
-    while (stu_list != NULL) {
-        if (strcmp(stu_list->name, student_name) == 0) {
+Student *find_student(Student *stu_list, char *student_name)
+{
+    while (stu_list != NULL)
+    {
+        if (strcmp(stu_list->name, student_name) == 0)
+        {
             return stu_list;
         }
         stu_list = stu_list->next_overall;
@@ -21,14 +25,14 @@ Student *find_student(Student *stu_list, char *student_name) {
     return NULL;
 }
 
-
-
 /*   Return a pointer to the ta with name ta_name or NULL
  *   if no such TA exists in ta_list. 
  */
-Ta *find_ta(Ta *ta_list, char *ta_name) {
+Ta *find_ta(Ta *ta_list, char *ta_name)
+{
     Ta *current = ta_list;
-    while (current != NULL && (strcmp(current->name, ta_name) != 0)) {
+    while (current != NULL && (strcmp(current->name, ta_name) != 0))
+    {
         current = current->next;
     }
     return current;
@@ -37,15 +41,17 @@ Ta *find_ta(Ta *ta_list, char *ta_name) {
 /*  Return a pointer to the course with this code in the course list
  *  or NULL if there is no course in the list with this code.
  */
-Course *find_course(Course *courses, int num_courses, char *course_code) {
-    for (int i=0; i< num_courses; i++) {
-        if (strcmp(courses[i].code, course_code) == 0) {
+Course *find_course(Course *courses, int num_courses, char *course_code)
+{
+    for (int i = 0; i < num_courses; i++)
+    {
+        if (strcmp(courses[i].code, course_code) == 0)
+        {
             return &courses[i];
         }
     }
     return NULL;
 }
-    
 
 /* Add a student to the queue with student_name and a question about course_code.
  * if a student with this name already has a question in the queue (for any
@@ -54,22 +60,25 @@ Course *find_course(Course *courses, int num_courses, char *course_code) {
  * the student struct.
  */
 int add_student(Student **stu_list_ptr, char *student_name, char *course_code,
-    Course *course_array, int num_courses) {
+                Course *course_array, int num_courses)
+{
 
     // check if this student is already in the queue and if so, don't add
     Student *old_student = find_student(*stu_list_ptr, student_name);
-    if (old_student != NULL) {
+    if (old_student != NULL)
+    {
         return 1;
     }
 
     // first create the new student struct and set the name
     Student *new_student = malloc(sizeof(Student));
-    new_student->name = malloc(strlen(student_name)+1);
+    new_student->name = malloc(strlen(student_name) + 1);
     strcpy(new_student->name, student_name);
 
     // find the course in the course list and handle invalid course code errors
-    new_student->course = find_course(course_array, num_courses, course_code); 
-    if (new_student->course == NULL) {
+    new_student->course = find_course(course_array, num_courses, course_code);
+    if (new_student->course == NULL)
+    {
         free(new_student->name);
         free(new_student);
         return 2;
@@ -77,14 +86,18 @@ int add_student(Student **stu_list_ptr, char *student_name, char *course_code,
 
     new_student->next_overall = NULL;
 
-    // find the end of the current list to put this student at the end 
-    if (*stu_list_ptr == NULL) {
+    // find the end of the current list to put this student at the end
+    if (*stu_list_ptr == NULL)
+    {
         // there is currently no student in the list at all, so special case
         *stu_list_ptr = new_student;
-    } else {
+    }
+    else
+    {
         // we have at least one student in the list so find last student
         Student *last = *stu_list_ptr;
-        while (last->next_overall != NULL) {
+        while (last->next_overall != NULL)
+        {
             last = last->next_overall;
         }
         // at this point last is the last real student in the overall list
@@ -97,19 +110,24 @@ int add_student(Student **stu_list_ptr, char *student_name, char *course_code,
 /*
  * Helper method 
  */
-void route_around_overall(Student **stu_list_ptr, Student *thisstudent) {
+void route_around_overall(Student **stu_list_ptr, Student *thisstudent)
+{
     // find the previous student overall -- route around this removing one
     Student *current = *stu_list_ptr;
-    if (current == thisstudent) {
+    if (current == thisstudent)
+    {
         // this student is first in list
         *stu_list_ptr = thisstudent->next_overall;
-    } else {
-        while (current->next_overall != thisstudent) {
+    }
+    else
+    {
+        while (current->next_overall != thisstudent)
+        {
             current = current->next_overall;
         }
-        // now current points to previous student 
+        // now current points to previous student
         current->next_overall = thisstudent->next_overall;
-   }
+    }
 }
 
 /* Student student_name has given up waiting and left the help centre
@@ -118,15 +136,17 @@ void route_around_overall(Student **stu_list_ptr, Student *thisstudent) {
  *
  * If there is no student by this name in the stu_list, return 1.
  */
-int give_up_waiting(Student **stu_list_ptr, char *student_name) {
+int give_up_waiting(Student **stu_list_ptr, char *student_name)
+{
     // find the student based on name from the student list
-    Student *thisstudent= find_student(*stu_list_ptr, student_name); 
-    if (thisstudent == NULL) {
-        return 1; 
+    Student *thisstudent = find_student(*stu_list_ptr, student_name);
+    if (thisstudent == NULL)
+    {
+        return 1;
     }
-    route_around_overall(stu_list_ptr, thisstudent); 
+    route_around_overall(stu_list_ptr, thisstudent);
 
-    // free memory 
+    // free memory
     free(thisstudent->name);
     free(thisstudent);
     return 0;
@@ -136,10 +156,11 @@ int give_up_waiting(Student **stu_list_ptr, char *student_name) {
  * For the purposes of this assignment, assume that ta_name is unique
  * to the help centre and don't check it.
  */
-void add_ta(Ta **ta_list_ptr, char *ta_name) {
+void add_ta(Ta **ta_list_ptr, char *ta_name)
+{
     // first create the new TA struct and populate
     Ta *new_ta = malloc(sizeof(Ta));
-    new_ta->name = malloc(strlen(ta_name)+1);
+    new_ta->name = malloc(strlen(ta_name) + 1);
     strcpy(new_ta->name, ta_name);
     new_ta->current_student = NULL;
 
@@ -151,18 +172,24 @@ void add_ta(Ta **ta_list_ptr, char *ta_name) {
 /* remove this Ta from the ta_list and free the associated memory
  * Return 0 on success or 1 if this ta_name is not found in the list
  */
-int remove_ta(Ta **ta_list_ptr, char *ta_name) {
+int remove_ta(Ta **ta_list_ptr, char *ta_name)
+{
     Ta *head = *ta_list_ptr;
-    if (head == NULL) {
+    if (head == NULL)
+    {
         return 1;
-    } else if (strcmp(head->name, ta_name) == 0) {
+    }
+    else if (strcmp(head->name, ta_name) == 0)
+    {
         // TA is at the head so special case
         *ta_list_ptr = head->next;
         free(head);
         return 0;
-    } 
-    while (head->next != NULL) {
-        if (strcmp(head->next->name, ta_name) == 0) {
+    }
+    while (head->next != NULL)
+    {
+        if (strcmp(head->next->name, ta_name) == 0)
+        {
             Ta *tofree = head->next;
             head->next = head->next->next;
             free(tofree);
@@ -173,7 +200,6 @@ int remove_ta(Ta **ta_list_ptr, char *ta_name) {
     return 1;
 }
 
-
 /* Take student to_serve out of the stu_list and assign them as the currently
  *   being served sudent for TA with name ta_name. 
  * If there is another student currently being served then this finishes 
@@ -182,21 +208,24 @@ int remove_ta(Ta **ta_list_ptr, char *ta_name) {
  * it records the completion of the existing student (if any) and frees 
  * If ta_name is not in ta_list, return 1 and take no further action.
  */
-int take_student(Ta *ta, Student **stu_list_ptr, Student *to_serve) {
+int take_student(Ta *ta, Student **stu_list_ptr, Student *to_serve)
+{
 
     // find student being served if any and release
     Student *servee = ta->current_student;
-    if (servee != NULL) {
+    if (servee != NULL)
+    {
         free(servee->name);
         free(servee);
     }
-    //  set TA to point to the new (to-be-served) student 
+    //  set TA to point to the new (to-be-served) student
     ta->current_student = to_serve;
     //  if there is a new servee then remove them from the waiting queue
     //  but don't free the memory since they have just moved to the being
     //  served data structure
-    if (to_serve != NULL) {
-        route_around_overall(stu_list_ptr, to_serve); 
+    if (to_serve != NULL)
+    {
+        route_around_overall(stu_list_ptr, to_serve);
     }
     return 0;
 }
@@ -208,48 +237,69 @@ int take_student(Ta *ta, Student **stu_list_ptr, Student *to_serve) {
  * and sets current_student for this TA to NULL.
  * If ta_name is not in ta_list, return 1 and do nothing.
  */
-int next_overall(char *ta_name, Ta **ta_list_ptr, Student **stu_list_ptr) {
+int next_overall(char *ta_name, Ta **ta_list_ptr, Student **stu_list_ptr)
+{
     //  find next student to serve  -- this is just the head of stu_list
     Student *to_serve_next = *stu_list_ptr;
     // find ta by name in ta_list
     Ta *ta = find_ta(*ta_list_ptr, ta_name);
-    if (ta == NULL) {
+    if (ta == NULL)
+    {
         return 1;
     }
     return take_student(ta, stu_list_ptr, to_serve_next);
 }
 
-
 // print a message about which TAs are serving which students
-void print_currently_serving(Ta *ta_list) {
-    if (ta_list == NULL) {
-        printf("No TAs are currently working.\n");
-        return;
+char *print_currently_serving(Ta *ta_list)
+{
+
+    if (ta_list == NULL)
+    {
+        DynamicString *ds = ds_from_cstr("No TAs are currently working.\n");
+        //printf("No TAs are currently working.\n");
+        return ds_into_raw(ds);
     }
-    while (ta_list != NULL) {
-       if (ta_list->current_student != NULL) {
-           printf("TA: %s is serving %s.\n",
-                ta_list->name,
-                ta_list->current_student->name);
-       } else {
-           printf("TA: %s has no student\r\n", ta_list->name);
-       }
-       ta_list = ta_list->next;
+
+    char *buf;
+    DynamicString* ds = ds_new(0);
+    while (ta_list != NULL)
+    {
+        if (ta_list->current_student != NULL)
+        {
+            asprintf(&buf, "TA: %s is serving %s.\n",
+                   ta_list->name,
+                   ta_list->current_student->name);
+            ds_append(ds, buf);
+        }
+        else
+        {
+            asprintf(&buf, "TA: %s has no student\r\n", ta_list->name);
+            ds_append(ds, buf);
+        }
+        ta_list = ta_list->next;
     }
+
+    return ds_into_raw(ds);
 }
 
 /*  Print a list of all the students in the queue. This does not
  *    print students currently being served. 
- */ 
-void print_full_queue(Student *stu_list) {
-    printf("Full Queue\n");
-    while (stu_list != NULL) {
-        printf("Student %s:%s\n",stu_list->name, stu_list->course->code);
+ */
+char *print_full_queue(Student *stu_list)
+{
+
+    DynamicString *ds = ds_from_cstr("Full Queue\n");
+    char *buf;
+    while (stu_list != NULL)
+    {
+        asprintf(&buf, "Student %s:%s\n", stu_list->name, stu_list->course->code);
+        ds_append(ds, buf);
+        free(buf);
         stu_list = stu_list->next_overall;
     }
+    return ds_into_raw(ds);
 }
-
-
 
 /* Dynamically allocate space for the array course list and populate it
  * according to information in the configuration file config_filename
@@ -257,13 +307,15 @@ void print_full_queue(Student *stu_list) {
  * If the configuration file can not be opened, call perror() and exit.
 */
 
-int config_course_list(Course **courselist_ptr, char *config_filename) {
+int config_course_list(Course **courselist_ptr, char *config_filename)
+{
     /* for this stripped-down implementation, we are just ignoring
        the config_filename 
     */
-    
+
     *courselist_ptr = malloc(sizeof(Course) * 3);
-    if (*courselist_ptr == NULL) {
+    if (*courselist_ptr == NULL)
+    {
         perror("Malloc for course list\n");
         exit(1);
     }

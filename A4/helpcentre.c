@@ -43,10 +43,15 @@ int process_args(int cmd_argc, char **cmd_argv) {
             error("Invalid Course -- student not added.");
         }
     }  else if (strcmp(cmd_argv[0], "print_full_queue") == 0 && cmd_argc == 1) {
-        print_full_queue(stu_list);
+        char* buf = print_full_queue(stu_list);
+        printf("%s",buf);
+        free(buf);
 
     } else if (strcmp(cmd_argv[0], "print_currently_serving") == 0 && cmd_argc == 1) {
-        print_currently_serving(ta_list);
+        //print_currently_serving(ta_list);
+        char* buf = print_currently_serving(ta_list);
+        printf("%s",buf);
+        free(buf);
 
     } else if (strcmp(cmd_argv[0], "give_up") == 0 && cmd_argc == 2) {
         if (give_up_waiting(&stu_list, cmd_argv[1]) == 1) {

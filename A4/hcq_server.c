@@ -94,7 +94,6 @@ int process_args(int cmd_argc, char **cmd_argv, char **ptr)
     {
         if (next_overall(cmd_argv[1], &ta_list, &stu_list) == 1)
         {
-            ;
             error("Invalid TA name.", ptr);
         }
     }
@@ -105,8 +104,75 @@ int process_args(int cmd_argc, char **cmd_argv, char **ptr)
     return 0;
 }
 
+int process_username(Client *c)
+{
+    char *msg = client_ready_message(c);
+    client_set_username(c, msg);
+    printf("Set client username to: %s\n", msg);
+    client_set_state(c, S_PROMPT_TYPE);
+    free(msg);
+    return 0;
+}
+
+int process_type(Client *c)
+{
+    char *msg = client_ready_message(c);
+
+    if (!strcmp("T", msg))
+    {
+        client_set_type(c, CLIENT_TA);
+        printf("Set client type to TA\n");
+
+        client_set_state(c, S_PROMPT_MOTD);
+    }
+    else if (!strcmp("S", msg))
+    {
+        client_set_type(c, CLIENT_STUDENT);
+        printf("Set client type to Student\n");
+        client_set_state(c, S_PROMPT_MOTD);
+    }
+    else
+    {
+        client_set_state(c, S_PROMPT_TYPE_INVALID);
+    }
+    free(msg);
+    return 0;
+}
+
+int process_course(Client *c)
+{
+    char *msg = client_ready_message(c);
+
+    for (int i = 0; i < num_courses; i++)
+    {
+        if (!strcmp(courses[i].code, msg))
+        {
+            client_set_state(c, S_PROMPT_COMMANDS);
+            client_write(c, "You have been entered into the queue. While you wait, you can "
+                            "use the command stats to see which TAs are currently serving students.\n");
+            free(msg);
+            return 0;
+        }
+    }
+    client_write(c, "This is not a valid course. Good-bye.");
+    client_set_state(c, S_INVALID);
+    client_close(c);
+    free(msg);
+    return 0;
+}
+
 int main(void)
 {
+
+    if ((courses = malloc(sizeof(Course) * 3)) == NULL)
+    {
+        perror("malloc for course list\n");
+        exit(1);
+    }
+
+    strcpy(courses[0].code, "CSC108");
+    strcpy(courses[1].code, "CSC148");
+    strcpy(courses[2].code, "CSC209");
 
     // Create the socket FD.
     int sock_fd = socket(AF_INET, SOCK_STREAM, 0);
@@ -150,6 +216,67 @@ int main(void)
     while (1)
     {
         // select updates the fd_set it receives, so we always use a copy and retain the original.
+
+        for (Client *c = client_list_root(clients); c != NULL; c = client_next(c))
+        {
+            if (client_recv_state(c) == RS_RECV_PREP)
+            {
+                switch (client_state(c))
+                {
+                case S_INVALID:
+                    continue;
+
+                case S_PROMPT_USERNAME:
+                    client_write(c, "Welcome to the Help Centre, what is your name?\n");
+                    client_prep_read(c);
+                    break;
+                case S_PROMPT_TYPE:
+                    client_write(c, "Are you a TA or a Student (enter T or S)?\n");
+                    client_prep_read(c);
+                    break;
+                case S_PROMPT_TYPE_INVALID:
+                    client_write(c, "Invalid role (enter T or S)?\n");
+                    client_prep_read(c);
+                    break;
+                case S_PROMPT_MOTD:
+                    switch (client_type(c))
+                    {
+                    case CLIENT_TA:
+                        client_write(c, "Valid commands for TA:\n\tstats\n\tnext\n\t(or use Ctrl-C to leave)\n");
+                        // add a TA here.
+                        client_set_state(c, S_PROMPT_COMMANDS);
+                        break;
+                    case CLIENT_STUDENT:
+                        //todo: make dynamic
+                        client_write(c, "Valid courses: ");
+                        for (int i = 0; i < num_courses; i++)
+                        {
+                            // this could be done better...
+                            client_write(c, courses[i].code);
+                            if (i < num_courses - 1)
+                            {
+                                client_write(c, ", ");
+                            }
+                        }
+                        client_write(c, "\nWhich course are you asking about?\n");
+                        // add a student here.
+                        client_set_state(c, S_PROMPT_COURSES);
+                        break;
+                    case CLIENT_UNSET:
+                        break;
+                    }
+                    client_prep_read(c);
+                    break;
+                case S_PROMPT_COMMANDS:
+                    client_write(c, "> ");
+                    client_prep_read(c);
+                    break;
+                default:
+                    break;
+                }
+            }
+        }
+
         fd_set listen_fds = client_fdset_clone(clients);
         int nready = client_list_select(clients, &listen_fds);
         if (nready == -1)
@@ -170,38 +297,43 @@ int main(void)
             int fd = client_fd(c);
             if (fd != -1 && FD_ISSET(fd, &listen_fds))
             {
-                int client_closed = 0;
-
-                switch (client_state(c))
+                // client_recv_state may change in between calls.
+                if (client_recv_state(c) == RS_RECV_NOT_RDY)
                 {
-                case S_PROMPT_USERNAME:
-                    // prompt for username here
-                    // mutates c.usernamee
-                    break;
-                case S_PROMPT_TYPE:
-                    //prompt for type here.
-                    // should also display motd once
-                    // prompt is finish
-                    break;
-                case S_PROMPT_COMMANDS:
-                    //prompt for commands here
-                    break;
-                case S_DISCONNECTED:
-                default:
-                    break;
+                    client_read(c);
                 }
 
-                if (client_closed)
+                // last read may have changed the recv state.
+                if (client_recv_state(c) == RS_RECV_RDY)
                 {
-                    // mark client as disconnected
-                    // does not actually disconnect the client
-                    // until client_list_collect is run.
-                    client_close(c);
+                    switch (client_state(c))
+                    {
+                    case S_PROMPT_USERNAME:
+                        process_username(c);
+                        break;
+                    case S_PROMPT_TYPE:
+                    case S_PROMPT_TYPE_INVALID:
+                        process_type(c);
+                        break;
+                    case S_PROMPT_COURSES:
+                        process_course(c);
+                        break;
+                    case S_PROMPT_COMMANDS:
+                        process_username(c);
+                        break;
+                    case S_INVALID:
+                        continue;
+                        break;
+                    default:
+                        break;
+                    }
                 }
             }
         }
 
         // do garbage collection for dropped clients.
+        // any I/O operation on a dropped socket will set the recv state to RS_DISCONNECTED.
+        // this will mark the client as dead.
         client_list_collect(clients);
     }
 }

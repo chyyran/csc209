@@ -3,20 +3,27 @@
 #include <string.h>
 #include <sys/socket.h>
 #include <assert.h>
+#include <stdbool.h>
+
 #include "srvman.h"
+#include "dynstr.h"
 
 #define INPUT_BUFFER_SIZE 256
 #define INPUT_ARG_MAX_NUM 3
 #define DELIM " \n"
-
+int find_network_newline(const char *buf, int n);
 typedef struct client_s
 {
     int sock_fd;
     ClientType type;
     char name[INPUT_BUFFER_SIZE];
-    char buffer[INPUT_BUFFER_SIZE];
+    char wbuffer[INPUT_BUFFER_SIZE];
+
+    DynamicString *rbuffer;
+
     Client *next;
     Client *prev;
+    ClientRecvState recv;
     ClientInitState state;
 } client_s;
 
@@ -48,7 +55,14 @@ Client *client_new(int sock_fd)
     ptr->state = S_PROMPT_USERNAME;
     ptr->next = NULL;
     ptr->prev = NULL;
+    ptr->rbuffer = NULL;
+    ptr->recv = RS_RECV_PREP;
     return ptr;
+}
+
+ClientType client_type(Client *c)
+{
+    return c->type;
 }
 
 ClientInitState client_state(Client *c)
@@ -56,21 +70,9 @@ ClientInitState client_state(Client *c)
     return c->state;
 }
 
-Client *client_next_state(Client *c)
+Client *client_set_state(Client *c, ClientInitState state)
 {
-    switch (c->state)
-    {
-    case S_PROMPT_USERNAME:
-        c->state = S_PROMPT_TYPE;
-        break;
-    case S_PROMPT_TYPE:
-        c->state = S_PROMPT_COMMANDS;
-    case S_PROMPT_COMMANDS:
-        c->state = S_DISCONNECTED;
-    default:
-        c->state = c->state;
-        break;
-    }
+    c->state = state;
     return c;
 }
 
@@ -86,11 +88,30 @@ Client *client_list_root(ClientList *l)
     return l->root;
 }
 
+Client *client_set_username(Client *c, const char *username)
+{
+    memset(c->name, 0, INPUT_BUFFER_SIZE);
+    strcpy(c->name, username);
+    return c;
+}
+
+Client *client_set_type(Client *c, ClientType type)
+{
+    c->type = type;
+    return c;
+}
 ClientList *client_list_append(ClientList *l, Client *c)
 {
+    if (l->root == NULL)
+    {
+        l->root = c;
+    }
     c->prev = l->end;
     c->next = NULL;
-    l->end->next = c;
+    if (l->end != NULL)
+    {
+        l->end->next = c;
+    }
     l->end = c;
     FD_SET(c->sock_fd, &l->fds);
 
@@ -108,7 +129,7 @@ int client_fd(Client *c)
 
 void client_close(Client *c)
 {
-    c->state = S_DISCONNECTED;
+    c->recv = RS_DISCONNECTED;
 }
 
 fd_set client_fdset_clone(ClientList *l)
@@ -139,7 +160,10 @@ Client *client_list_remove(ClientList *l, Client *c)
         // update the list tail, and
         // delete the next.
         l->end = c->prev;
-        c->prev->next = NULL;
+        if (c->prev != NULL)
+        {
+            c->prev->next = NULL;
+        }
     }
     if (c->prev == NULL)
     {
@@ -148,6 +172,15 @@ Client *client_list_remove(ClientList *l, Client *c)
         l->root = c->next;
     }
     FD_CLR(c->sock_fd, &l->fds);
+    // We do not care about the return value of this close call.
+    // If it fails, the client is destroyed regardless.
+    // If this close fails, or example if sock_fd is -1, then
+    // there's nothing we can do anyways.
+
+    // There is no way to write or read to this client anymore once
+    // this function returns.
+    close(c->sock_fd);
+    printf("Closed client %d", c->sock_fd);
     // free the client
     free(c);
     return prev;
@@ -157,7 +190,7 @@ ClientList *client_list_collect(ClientList *l)
 {
     for (Client *c = client_list_root(l); c != NULL; c = client_next(c))
     {
-        if (c->state == S_DISCONNECTED)
+        if (c->recv == RS_DISCONNECTED)
         {
             c = client_list_remove(l, c);
         }
@@ -178,4 +211,98 @@ void accept_connection(ClientList *l)
 
     Client *c = client_new(client_fd);
     client_list_append(l, c);
+}
+
+char *client_ready_message(Client *c)
+{
+    char *ptr = ds_into_raw(c->rbuffer);
+    c->recv = RS_RECV_PREP;
+    c->rbuffer = NULL;
+    return ptr;
+}
+
+ClientRecvState client_recv_state(Client *c)
+{
+    return c->recv;
+}
+
+int client_write(Client *c, const char *message)
+{
+    if (c->sock_fd == -1 || c->recv == RS_DISCONNECTED)
+        return -1;
+    //todo panic_write
+    memset(c->wbuffer, 0, INPUT_BUFFER_SIZE);
+    snprintf(c->wbuffer, INPUT_BUFFER_SIZE - 1, "%s", message);
+    int nbytes = write(c->sock_fd, c->wbuffer, strlen(c->wbuffer));
+
+    if (nbytes == -1)
+        c->recv = RS_DISCONNECTED;
+    return nbytes;
+}
+
+int client_prep_read(Client *c)
+{
+    if (c->recv != RS_RECV_PREP || c->rbuffer != NULL)
+    {
+        return -1;
+    }
+    c->rbuffer = ds_new(0);
+    c->recv = RS_RECV_NOT_RDY;
+    return 0;
+}
+
+int client_read(Client *c)
+{
+    if (c->sock_fd == -1 || c->recv == RS_DISCONNECTED)
+        return -1;
+    if (c->recv == RS_RECV_RDY)
+    {
+        // receive to read if buffer is ready
+        return -1;
+    }
+    if (c->recv == RS_RECV_PREP)
+    {
+        return -1;
+    }
+
+    char buf[INPUT_BUFFER_SIZE + 1] = {'\0'};
+    int nbytes = read(c->sock_fd, buf, INPUT_BUFFER_SIZE);
+    if (nbytes == -1)
+    {
+        c->recv = RS_DISCONNECTED;
+        return -1;
+    }
+    int crlf = -1;
+    if ((crlf = find_network_newline(buf, INPUT_BUFFER_SIZE)) == -1)
+    {
+        // no newline found, append the entire thing
+        ds_append(c->rbuffer, buf);
+    }
+    else
+    {
+        buf[crlf - 2] = '\0';
+        ds_append(c->rbuffer, buf);
+        // flag as ready
+        c->recv = RS_RECV_RDY;
+    }
+    return nbytes;
+}
+
+/*
+ * Search the first n characters of buf for a network newline (\r\n).
+ * Return one plus the index of the '\n' of the first network newline,
+ * or -1 if no network newline is found.
+ * Definitely do not use strchr or other string functions to search here. (Why not?)
+ */
+int find_network_newline(const char *buf, int n)
+{
+    for (int i = 0; i < n - 1; i++)
+    {
+        // if buf[i] is not CR, then we don't care about buf[i+1]
+        // if we're at buf[n -1], and buf[n-1] is not CR, then we don't care if buf[n] is CR.
+
+        if (buf[i] == '\r' && buf[i + 1] == '\n')
+            return i + 2; //LF is at i+1
+    }
+    return -1;
 }

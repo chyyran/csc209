@@ -19,8 +19,8 @@ hcq.o: hcq.c hcq.h dynstr.h
 dynstr.o: dynstr.c dynstr.h
 	gcc $(CFLAGS) -c dynstr.c
 
-srvman.o: srvman.c srvman.h
+srvman.o: srvman.c srvman.h dynstr.h
 	gcc $(CFLAGS) -c srvman.c
 
 clean: 
-	rm helpcentre *.o
+	rm helpcentre hcq_server *.o

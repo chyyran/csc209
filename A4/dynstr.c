@@ -12,7 +12,7 @@ typedef struct dynstr_s
 DynamicString *ds_new(ssize_t len)
 {
     DynamicString *ptr = malloc(sizeof(DynamicString));
-    ptr->raw = malloc(sizeof(char) * len);
+    ptr->raw = calloc(len, sizeof(char));
     ptr->len = 0;
     return ptr;
 }
@@ -20,8 +20,8 @@ DynamicString *ds_new(ssize_t len)
 DynamicString *ds_from_cstr(const char *s)
 {
     ssize_t len = strlen(s);
-    DynamicString *ptr = malloc(sizeof(DynamicString));
-    ptr->raw = malloc(sizeof(char) * len);
+    DynamicString *ptr = calloc(1, sizeof(DynamicString));
+    ptr->raw = calloc(len, sizeof(char));
     ptr->len = len;
 
     strcpy(ptr->raw, s);

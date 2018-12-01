@@ -36,74 +36,6 @@ Student *stu_list = NULL;
 Course *courses;
 int num_courses = 3;
 
-// /* 
-//  * Read and process commands
-//  * Return:  -1 for quit command
-//  *          0 otherwise
-//  */
-// int process_args(int cmd_argc, char **cmd_argv, char **ptr)
-// {
-
-//     int result;
-
-//     if (cmd_argc <= 0)
-//     {
-//         return 0;
-//     }
-//     else if (strcmp(cmd_argv[0], "add_student") == 0 && cmd_argc == 3)
-//     {
-//         result = add_student(&stu_list, cmd_argv[1], cmd_argv[2], courses,
-//                              num_courses);
-//         if (result == 1)
-//         {
-//             error("This student is already in the queue.", ptr);
-//         }
-//         else if (result == 2)
-//         {
-//             error("Invalid Course -- student not added.", ptr);
-//         }
-//     }
-//     else if (strcmp(cmd_argv[0], "print_full_queue") == 0 && cmd_argc == 1)
-//     {
-//         *ptr = print_full_queue(stu_list);
-//     }
-//     else if (strcmp(cmd_argv[0], "print_currently_serving") == 0 && cmd_argc == 1)
-//     {
-//         //print_currently_serving(ta_list);
-//         *ptr = print_currently_serving(ta_list);
-//     }
-//     else if (strcmp(cmd_argv[0], "give_up") == 0 && cmd_argc == 2)
-//     {
-//         if (give_up_waiting(&stu_list, cmd_argv[1]) == 1)
-//         {
-//             error("There was no student by that name waiting in the queue.", ptr);
-//         }
-//     }
-//     else if (strcmp(cmd_argv[0], "add_ta") == 0 && cmd_argc == 2)
-//     {
-//         add_ta(&ta_list, cmd_argv[1]);
-//     }
-//     else if (strcmp(cmd_argv[0], "remove_ta") == 0 && cmd_argc == 2)
-//     {
-//         if (remove_ta(&ta_list, cmd_argv[1]) == 1)
-//         {
-//             error("Invalid TA name.", ptr);
-//         }
-//     }
-//     else if (strcmp(cmd_argv[0], "next") == 0 && cmd_argc == 2)
-//     {
-//         if (next_overall(cmd_argv[1], &ta_list, &stu_list) == 1)
-//         {
-//             error("Invalid TA name.", ptr);
-//         }
-//     }
-//     else
-//     {
-//         error("Incorrect syntax.", ptr);
-//     }
-//     return 0;
-// }
-
 int process_username(Client *c)
 {
     char *msg = client_ready_message(c);
@@ -151,7 +83,8 @@ int process_course(Client *c)
             client_write(c, "You have been entered into the queue. While you wait, you can "
                             "use the command stats to see which TAs are currently serving students.\n");
             add_student(&stu_list, client_username(c), msg, courses, num_courses, c);
-;           free(msg);
+            
+            free(msg);
             return 0;
         }
     }
@@ -159,6 +92,38 @@ int process_course(Client *c)
     client_set_state(c, S_INVALID);
     client_close(c);
     free(msg);
+    return 0;
+}
+
+int process_command(Client *c)
+{
+    // tokenize arguments
+    // Notice that this tokenizing is not sophisticated enough to
+    // handle quoted arguments with spaces so names can not have spaces.
+    char *input = client_ready_message(c);
+
+    if (!strcmp("stats", input))
+    {
+        char *response = NULL;
+
+        if (client_type(c) == CLIENT_STUDENT)
+        {
+            response = print_currently_serving(ta_list);
+        }
+
+        if (client_type(c) == CLIENT_TA)
+        {
+            response = print_full_queue(stu_list);
+        }
+        client_write(c, response);
+        free(response);
+    }
+    else
+    {
+        client_write(c, "Incorrect syntax\n");
+    }
+
+    free(input);
     return 0;
 }
 
@@ -328,7 +293,7 @@ int main(void)
                         process_course(c);
                         break;
                     case S_PROMPT_COMMANDS:
-                        process_username(c);
+                        process_command(c);
                         break;
                     case S_INVALID:
                         continue;

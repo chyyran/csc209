@@ -150,6 +150,7 @@ int client_list_select(ClientList *l, fd_set *out_fds)
 // returns the previous
 Client *client_list_remove(ClientList *l, Client *c, Ta **ta_list, Student **student_list)
 {
+    printf("Disconnecting client %d\n", c->sock_fd);
     assert(c != NULL);
     assert(l != NULL);
     Client *prev = c->prev;
@@ -185,6 +186,7 @@ Client *client_list_remove(ClientList *l, Client *c, Ta **ta_list, Student **stu
     {
         remove_ta(ta_list, c->name);
     }
+
     FD_CLR(c->sock_fd, &l->fds);
     // We do not care about the return value of this close call.
     // If it fails, the client is destroyed regardless.
@@ -194,7 +196,7 @@ Client *client_list_remove(ClientList *l, Client *c, Ta **ta_list, Student **stu
     // There is no way to write or read to this client anymore once
     // this function returns.
     close(c->sock_fd);
-    printf("Closed client %d\n", c->sock_fd);
+    printf("Client disconnected %d\n", c->sock_fd);
     // free the client
     free(c);
     return prev;
@@ -249,8 +251,10 @@ int client_write(Client *c, const char *message)
     snprintf(c->wbuffer, INPUT_BUFFER_SIZE - 1, "%s", message);
     int nbytes = write(c->sock_fd, c->wbuffer, strlen(c->wbuffer));
 
-    if (nbytes == -1)
+    if (nbytes == -1) {
+        printf("Tried to write to broken pipe, marking client as dead\n");
         c->recv = RS_DISCONNECTED;
+    }
     return nbytes;
 }
 
@@ -281,8 +285,9 @@ int client_read(Client *c)
 
     char buf[INPUT_BUFFER_SIZE + 1] = {'\0'};
     int nbytes = read(c->sock_fd, buf, INPUT_BUFFER_SIZE);
-    if (nbytes == -1)
+    if (nbytes <= 0)
     {
+        printf("Tried to read from broken pipe, marking client as dead\n");
         c->recv = RS_DISCONNECTED;
         return -1;
     }

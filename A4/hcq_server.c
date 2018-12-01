@@ -118,6 +118,13 @@ int process_command(Client *c)
         client_write(c, response);
         free(response);
     }
+    else if (!strcmp("next", input) && client_type(c) == CLIENT_TA) {
+        next_overall(client_username(c), &ta_list, &stu_list);
+        Ta *ta = find_ta(ta_list, client_username(c));
+        Client* st_client = ta->current_student->client;
+        client_write(st_client, "Your turn to see the TA.\nWe are disconnecting you from the server now. Press Ctrl-C to close nc\n");
+        client_close(st_client);
+    }
     else
     {
         client_write(c, "Incorrect syntax\n");
@@ -157,6 +164,14 @@ int main(void)
     // This should always be zero. On some systems, it won't error if you
     // forget, but on others, you'll get mysterious errors. So zero it.
     memset(&server.sin_zero, 0, 8);
+
+    // Ensure port is freed when process terminates
+    int on = 1;
+    int status = setsockopt([sock_fd], SOL_SOCKET, SO_REUSEADDR,
+                            (const char *) &on, sizeof(on));
+    if(status == -1) {
+        perror("setsockopt -- REUSEADDR");
+    }
 
     // Bind the selected port to the socket.
     if (bind(sock_fd, (struct sockaddr *)&server, sizeof(server)) < 0)

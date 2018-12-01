@@ -32,7 +32,7 @@ typedef struct ta Ta;
 
 // helper functions not directly related to only one command in the API
 Student *find_student(Student *stu_list, const char *student_name);
-Ta *find_ta(Ta *ta_list, char *ta_name);
+Ta *find_ta(Ta *ta_list, const char *ta_name);
 
 // functions provided as the API to a help-centre queue
 int add_student(Student **stu_list_ptr, const char *student_name, char *course_num,
@@ -45,7 +45,7 @@ int remove_ta(Ta **ta_list_ptr, char *ta_name);
 //  if student is currently being served then this finishes this student
 //    if there is no-one else waiting then the currently being served gets
 //    set to null 
-int next_overall(char *ta_name, Ta **ta_list_ptr, Student **stu_list_ptr);
+int next_overall(const char *ta_name, Ta **ta_list_ptr, Student **stu_list_ptr);
 
 // list currently being served by current TAs
 char *print_currently_serving(Ta *ta_list);

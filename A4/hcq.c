@@ -28,7 +28,7 @@ Student *find_student(Student *stu_list, const char *student_name)
 /*   Return a pointer to the ta with name ta_name or NULL
  *   if no such TA exists in ta_list. 
  */
-Ta *find_ta(Ta *ta_list, char *ta_name)
+Ta *find_ta(Ta *ta_list, const char *ta_name)
 {
     Ta *current = ta_list;
     while (current != NULL && (strcmp(current->name, ta_name) != 0))
@@ -238,7 +238,7 @@ int take_student(Ta *ta, Student **stu_list_ptr, Student *to_serve)
  * and sets current_student for this TA to NULL.
  * If ta_name is not in ta_list, return 1 and do nothing.
  */
-int next_overall(char *ta_name, Ta **ta_list_ptr, Student **stu_list_ptr)
+int next_overall(const char *ta_name, Ta **ta_list_ptr, Student **stu_list_ptr)
 {
     //  find next student to serve  -- this is just the head of stu_list
     Student *to_serve_next = *stu_list_ptr;

@@ -1,4 +1,5 @@
-CFLAGS = -Wall -g
+PORT=56704
+CFLAGS= -DPORT=\$(PORT) -g -Wall
 
 
 hcq_server: hcq_server.o hcq.o dynstr.o srvman.o

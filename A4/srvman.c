@@ -88,6 +88,11 @@ Client *client_list_root(ClientList *l)
     return l->root;
 }
 
+const char *client_username(Client *c)
+{
+    return c->name;
+}
+
 Client *client_set_username(Client *c, const char *username)
 {
     memset(c->name, 0, INPUT_BUFFER_SIZE);
@@ -143,7 +148,7 @@ int client_list_select(ClientList *l, fd_set *out_fds)
 }
 
 // returns the previous
-Client *client_list_remove(ClientList *l, Client *c)
+Client *client_list_remove(ClientList *l, Client *c, Ta **ta_list, Student **student_list)
 {
     assert(c != NULL);
     assert(l != NULL);
@@ -171,6 +176,15 @@ Client *client_list_remove(ClientList *l, Client *c)
         // attach root to the next client.
         l->root = c->next;
     }
+
+    if (c->type == CLIENT_STUDENT)
+    {
+        give_up_waiting(student_list, c->name);
+    }
+    if (c->type == CLIENT_TA)
+    {
+        remove_ta(ta_list, c->name);
+    }
     FD_CLR(c->sock_fd, &l->fds);
     // We do not care about the return value of this close call.
     // If it fails, the client is destroyed regardless.
@@ -180,19 +194,19 @@ Client *client_list_remove(ClientList *l, Client *c)
     // There is no way to write or read to this client anymore once
     // this function returns.
     close(c->sock_fd);
-    printf("Closed client %d", c->sock_fd);
+    printf("Closed client %d\n", c->sock_fd);
     // free the client
     free(c);
     return prev;
 }
 
-ClientList *client_list_collect(ClientList *l)
+ClientList *client_list_collect(ClientList *l, Ta **ta_list, Student **student_list)
 {
     for (Client *c = client_list_root(l); c != NULL; c = client_next(c))
     {
         if (c->recv == RS_DISCONNECTED)
         {
-            c = client_list_remove(l, c);
+            c = client_list_remove(l, c, ta_list, student_list);
         }
     }
 

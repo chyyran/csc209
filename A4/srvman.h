@@ -5,6 +5,14 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+
+typedef struct student Student;
+typedef struct course Course;
+typedef struct ta Ta;
+int give_up_waiting(Student **stu_list_ptr, char *student_name);
+int remove_ta(Ta **ta_list_ptr, char *ta_name);
+
+
 typedef struct client_s Client;
 typedef struct client_list_s ClientList;
 
@@ -37,14 +45,14 @@ typedef enum client_recv_state_e
 Client *client_new(int sock_fd);
 Client *client_set_state(Client *c, ClientInitState s);
 Client *client_set_username(Client *c, const char *username);
+const char *client_username(Client *c);
 void client_close(Client *c);
 Client *client_next(Client *c);
 int client_fd(Client *c);
 int client_prep_read(Client *c);
 
-ClientType client_type(Client* c);
+ClientType client_type(Client *c);
 Client *client_set_type(Client *c, ClientType type);
-
 
 ClientRecvState client_recv_state(Client *c);
 ClientInitState client_state(Client *c);
@@ -54,9 +62,9 @@ char *client_ready_message(Client *c);
 
 ClientList *client_list_new(int sock_fd);
 ClientList *client_list_append(ClientList *l, Client *c);
-ClientList *client_list_collect(ClientList *l);
+ClientList *client_list_collect(ClientList *l, Ta **ta_list, Student **student_list);
 
-Client *client_list_remove(ClientList *l, Client *c);
+Client *client_list_remove(ClientList *l, Client *c, Ta **ta_list, Student **student_list);
 Client *client_list_root(ClientList *c);
 
 int client_list_select(ClientList *l, fd_set *out_fds);

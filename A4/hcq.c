@@ -12,7 +12,7 @@
  * Return a pointer to the struct student with name stu_name
  * or NULL if no student with this name exists in the stu_list
  */
-Student *find_student(Student *stu_list, char *student_name)
+Student *find_student(Student *stu_list, const char *student_name)
 {
     while (stu_list != NULL)
     {
@@ -59,8 +59,8 @@ Course *find_course(Course *courses, int num_courses, char *course_code)
  * If course_code does not exist in the list, return 2 and do not create
  * the student struct.
  */
-int add_student(Student **stu_list_ptr, char *student_name, char *course_code,
-                Course *course_array, int num_courses)
+int add_student(Student **stu_list_ptr, const char *student_name, char *course_code,
+                Course *course_array, int num_courses, Client *c)
 {
 
     // check if this student is already in the queue and if so, don't add
@@ -73,6 +73,7 @@ int add_student(Student **stu_list_ptr, char *student_name, char *course_code,
     // first create the new student struct and set the name
     Student *new_student = malloc(sizeof(Student));
     new_student->name = malloc(strlen(student_name) + 1);
+    new_student->client = c;
     strcpy(new_student->name, student_name);
 
     // find the course in the course list and handle invalid course code errors
@@ -156,14 +157,14 @@ int give_up_waiting(Student **stu_list_ptr, char *student_name)
  * For the purposes of this assignment, assume that ta_name is unique
  * to the help centre and don't check it.
  */
-void add_ta(Ta **ta_list_ptr, char *ta_name)
+void add_ta(Ta **ta_list_ptr, const char *ta_name, Client *client)
 {
     // first create the new TA struct and populate
     Ta *new_ta = malloc(sizeof(Ta));
     new_ta->name = malloc(strlen(ta_name) + 1);
     strcpy(new_ta->name, ta_name);
     new_ta->current_student = NULL;
-
+    new_ta->client = client;
     // insert into front of list
     new_ta->next = *ta_list_ptr;
     *ta_list_ptr = new_ta;

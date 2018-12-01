@@ -36,73 +36,73 @@ Student *stu_list = NULL;
 Course *courses;
 int num_courses = 3;
 
-/* 
- * Read and process commands
- * Return:  -1 for quit command
- *          0 otherwise
- */
-int process_args(int cmd_argc, char **cmd_argv, char **ptr)
-{
+// /* 
+//  * Read and process commands
+//  * Return:  -1 for quit command
+//  *          0 otherwise
+//  */
+// int process_args(int cmd_argc, char **cmd_argv, char **ptr)
+// {
 
-    int result;
+//     int result;
 
-    if (cmd_argc <= 0)
-    {
-        return 0;
-    }
-    else if (strcmp(cmd_argv[0], "add_student") == 0 && cmd_argc == 3)
-    {
-        result = add_student(&stu_list, cmd_argv[1], cmd_argv[2], courses,
-                             num_courses);
-        if (result == 1)
-        {
-            error("This student is already in the queue.", ptr);
-        }
-        else if (result == 2)
-        {
-            error("Invalid Course -- student not added.", ptr);
-        }
-    }
-    else if (strcmp(cmd_argv[0], "print_full_queue") == 0 && cmd_argc == 1)
-    {
-        *ptr = print_full_queue(stu_list);
-    }
-    else if (strcmp(cmd_argv[0], "print_currently_serving") == 0 && cmd_argc == 1)
-    {
-        //print_currently_serving(ta_list);
-        *ptr = print_currently_serving(ta_list);
-    }
-    else if (strcmp(cmd_argv[0], "give_up") == 0 && cmd_argc == 2)
-    {
-        if (give_up_waiting(&stu_list, cmd_argv[1]) == 1)
-        {
-            error("There was no student by that name waiting in the queue.", ptr);
-        }
-    }
-    else if (strcmp(cmd_argv[0], "add_ta") == 0 && cmd_argc == 2)
-    {
-        add_ta(&ta_list, cmd_argv[1]);
-    }
-    else if (strcmp(cmd_argv[0], "remove_ta") == 0 && cmd_argc == 2)
-    {
-        if (remove_ta(&ta_list, cmd_argv[1]) == 1)
-        {
-            error("Invalid TA name.", ptr);
-        }
-    }
-    else if (strcmp(cmd_argv[0], "next") == 0 && cmd_argc == 2)
-    {
-        if (next_overall(cmd_argv[1], &ta_list, &stu_list) == 1)
-        {
-            error("Invalid TA name.", ptr);
-        }
-    }
-    else
-    {
-        error("Incorrect syntax.", ptr);
-    }
-    return 0;
-}
+//     if (cmd_argc <= 0)
+//     {
+//         return 0;
+//     }
+//     else if (strcmp(cmd_argv[0], "add_student") == 0 && cmd_argc == 3)
+//     {
+//         result = add_student(&stu_list, cmd_argv[1], cmd_argv[2], courses,
+//                              num_courses);
+//         if (result == 1)
+//         {
+//             error("This student is already in the queue.", ptr);
+//         }
+//         else if (result == 2)
+//         {
+//             error("Invalid Course -- student not added.", ptr);
+//         }
+//     }
+//     else if (strcmp(cmd_argv[0], "print_full_queue") == 0 && cmd_argc == 1)
+//     {
+//         *ptr = print_full_queue(stu_list);
+//     }
+//     else if (strcmp(cmd_argv[0], "print_currently_serving") == 0 && cmd_argc == 1)
+//     {
+//         //print_currently_serving(ta_list);
+//         *ptr = print_currently_serving(ta_list);
+//     }
+//     else if (strcmp(cmd_argv[0], "give_up") == 0 && cmd_argc == 2)
+//     {
+//         if (give_up_waiting(&stu_list, cmd_argv[1]) == 1)
+//         {
+//             error("There was no student by that name waiting in the queue.", ptr);
+//         }
+//     }
+//     else if (strcmp(cmd_argv[0], "add_ta") == 0 && cmd_argc == 2)
+//     {
+//         add_ta(&ta_list, cmd_argv[1]);
+//     }
+//     else if (strcmp(cmd_argv[0], "remove_ta") == 0 && cmd_argc == 2)
+//     {
+//         if (remove_ta(&ta_list, cmd_argv[1]) == 1)
+//         {
+//             error("Invalid TA name.", ptr);
+//         }
+//     }
+//     else if (strcmp(cmd_argv[0], "next") == 0 && cmd_argc == 2)
+//     {
+//         if (next_overall(cmd_argv[1], &ta_list, &stu_list) == 1)
+//         {
+//             error("Invalid TA name.", ptr);
+//         }
+//     }
+//     else
+//     {
+//         error("Incorrect syntax.", ptr);
+//     }
+//     return 0;
+// }
 
 int process_username(Client *c)
 {
@@ -150,7 +150,8 @@ int process_course(Client *c)
             client_set_state(c, S_PROMPT_COMMANDS);
             client_write(c, "You have been entered into the queue. While you wait, you can "
                             "use the command stats to see which TAs are currently serving students.\n");
-            free(msg);
+            add_student(&stu_list, client_username(c), msg, courses, num_courses, c);
+;           free(msg);
             return 0;
         }
     }
@@ -216,6 +217,7 @@ int main(void)
     while (1)
     {
         // select updates the fd_set it receives, so we always use a copy and retain the original.
+        client_list_collect(clients, &ta_list, &stu_list);
 
         for (Client *c = client_list_root(clients); c != NULL; c = client_next(c))
         {
@@ -244,6 +246,7 @@ int main(void)
                     case CLIENT_TA:
                         client_write(c, "Valid commands for TA:\n\tstats\n\tnext\n\t(or use Ctrl-C to leave)\n");
                         // add a TA here.
+                        add_ta(&ta_list, client_username(c), c);
                         client_set_state(c, S_PROMPT_COMMANDS);
                         break;
                     case CLIENT_STUDENT:
@@ -276,6 +279,12 @@ int main(void)
                 }
             }
         }
+
+        // Prompts could have dropped some clients.
+        // do garbage collection for dropped clients.
+        // any I/O operation on a dropped socket will set the recv state to RS_DISCONNECTED.
+        // this will mark the client as dead.
+        client_list_collect(clients, &ta_list, &stu_list);
 
         fd_set listen_fds = client_fdset_clone(clients);
         int nready = client_list_select(clients, &listen_fds);
@@ -331,90 +340,91 @@ int main(void)
             }
         }
 
+        // Processing could have dropped some clients.
         // do garbage collection for dropped clients.
         // any I/O operation on a dropped socket will set the recv state to RS_DISCONNECTED.
         // this will mark the client as dead.
-        client_list_collect(clients);
+        client_list_collect(clients, &ta_list, &stu_list);
     }
 }
 
-int main_old(int argc, char *argv[])
-{
-    if (argc < 1 || argc > 2)
-    {
-        fprintf(stderr, "Usage: ./helpcentre [commands_filename]\n");
-        exit(1);
-    }
-    int batch_mode = (argc == 3);
-    char input[INPUT_BUFFER_SIZE];
-    FILE *input_stream;
+// int main_old(int argc, char *argv[])
+// {
+//     if (argc < 1 || argc > 2)
+//     {
+//         fprintf(stderr, "Usage: ./helpcentre [commands_filename]\n");
+//         exit(1);
+//     }
+//     int batch_mode = (argc == 3);
+//     char input[INPUT_BUFFER_SIZE];
+//     FILE *input_stream;
 
-    if ((courses = malloc(sizeof(Course) * 3)) == NULL)
-    {
-        perror("malloc for course list\n");
-        exit(1);
-    }
-    strcpy(courses[0].code, "CSC108");
-    strcpy(courses[1].code, "CSC148");
-    strcpy(courses[2].code, "CSC209");
+//     if ((courses = malloc(sizeof(Course) * 3)) == NULL)
+//     {
+//         perror("malloc for course list\n");
+//         exit(1);
+//     }
+//     strcpy(courses[0].code, "CSC108");
+//     strcpy(courses[1].code, "CSC148");
+//     strcpy(courses[2].code, "CSC209");
 
-    // for holding arguments to individual commands passed to sub-procedure
-    char *cmd_argv[INPUT_ARG_MAX_NUM];
-    int cmd_argc;
+//     // for holding arguments to individual commands passed to sub-procedure
+//     char *cmd_argv[INPUT_ARG_MAX_NUM];
+//     int cmd_argc;
 
-    if (batch_mode)
-    {
-        input_stream = fopen(argv[2], "r");
-        if (input_stream == NULL)
-        {
-            perror("Error opening file");
-            exit(1);
-        }
-    }
-    else
-    { // interactive mode
-        input_stream = stdin;
-    }
+//     if (batch_mode)
+//     {
+//         input_stream = fopen(argv[2], "r");
+//         if (input_stream == NULL)
+//         {
+//             perror("Error opening file");
+//             exit(1);
+//         }
+//     }
+//     else
+//     { // interactive mode
+//         input_stream = stdin;
+//     }
 
-    printf("Welcome to the Help Centre Queuing System\nPlease type a command:\n>");
+//     printf("Welcome to the Help Centre Queuing System\nPlease type a command:\n>");
 
-    while (fgets(input, INPUT_BUFFER_SIZE, input_stream) != NULL)
-    {
-        char *msg = NULL;
-        // only echo the line in batch mode since in interactive mode the user
-        // has just typed the line
-        if (batch_mode)
-        {
-            printf("%s", input);
-        }
-        // tokenize arguments
-        // Notice that this tokenizing is not sophisticated enough to
-        // handle quoted arguments with spaces so names can not have spaces.
-        char *next_token = strtok(input, DELIM);
-        cmd_argc = 0;
-        while (next_token != NULL)
-        {
-            if (cmd_argc >= INPUT_ARG_MAX_NUM)
-            {
-                error("Too many arguments.", &msg);
-                cmd_argc = 0;
-                break;
-            }
-            cmd_argv[cmd_argc] = next_token;
-            cmd_argc++;
-            next_token = strtok(NULL, DELIM);
-        }
+//     while (fgets(input, INPUT_BUFFER_SIZE, input_stream) != NULL)
+//     {
+//         char *msg = NULL;
+//         // only echo the line in batch mode since in interactive mode the user
+//         // has just typed the line
+//         if (batch_mode)
+//         {
+//             printf("%s", input);
+//         }
+//         // tokenize arguments
+//         // Notice that this tokenizing is not sophisticated enough to
+//         // handle quoted arguments with spaces so names can not have spaces.
+//         char *next_token = strtok(input, DELIM);
+//         cmd_argc = 0;
+//         while (next_token != NULL)
+//         {
+//             if (cmd_argc >= INPUT_ARG_MAX_NUM)
+//             {
+//                 error("Too many arguments.", &msg);
+//                 cmd_argc = 0;
+//                 break;
+//             }
+//             cmd_argv[cmd_argc] = next_token;
+//             cmd_argc++;
+//             next_token = strtok(NULL, DELIM);
+//         }
 
-        if (cmd_argc > 0 && process_args(cmd_argc, cmd_argv, &msg) == -1)
-        {
-            break; // can only reach if quit command was entered
-        }
-        printf(">");
-    }
+//         if (cmd_argc > 0 && process_args(cmd_argc, cmd_argv, &msg) == -1)
+//         {
+//             break; // can only reach if quit command was entered
+//         }
+//         printf(">");
+//     }
 
-    if (batch_mode)
-    {
-        fclose(input_stream);
-    }
-    return 0;
-}
+//     if (batch_mode)
+//     {
+//         fclose(input_stream);
+//     }
+//     return 0;
+// }

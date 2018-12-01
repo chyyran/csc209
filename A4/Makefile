@@ -19,7 +19,7 @@ hcq.o: hcq.c hcq.h dynstr.h
 dynstr.o: dynstr.c dynstr.h
 	gcc $(CFLAGS) -c dynstr.c
 
-srvman.o: srvman.c srvman.h dynstr.h
+srvman.o: srvman.c srvman.h dynstr.h hcq.h
 	gcc $(CFLAGS) -c srvman.c
 
 clean: 

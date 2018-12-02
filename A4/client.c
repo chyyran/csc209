@@ -9,7 +9,7 @@
 #include "dynstr.h"
 
 #define INPUT_BUFFER_SIZE 30
-#define OUTPUT_BUFFER_SIZE 1024
+#define OUTPUT_BUFFER_SIZE 2048
 #define INPUT_ARG_MAX_NUM 3
 #define DELIM " \n"
 int find_network_newline(const char *buf, int n);
@@ -19,7 +19,7 @@ typedef struct client_s
     ClientType type;
     char name[INPUT_BUFFER_SIZE + 1];
     char wbuffer[OUTPUT_BUFFER_SIZE];
-
+    char roverflow[INPUT_BUFFER_SIZE];
     DynamicString *rbuffer;
 
     Client *next;
@@ -250,7 +250,7 @@ int client_write(Client *c, const char *message)
 {
     if (c->sock_fd == -1 || c->recv == RS_DISCONNECTED)
         return -1;
-    //todo panic_write
+
     memset(c->wbuffer, 0, OUTPUT_BUFFER_SIZE);
     snprintf(c->wbuffer, OUTPUT_BUFFER_SIZE - 1, "%s", message);
     int nbytes = write(c->sock_fd, c->wbuffer, strlen(c->wbuffer));
@@ -269,6 +269,14 @@ int client_prep_read(Client *c)
         return -1;
     }
     c->rbuffer = ds_new(0);
+
+    // push overflow into the read buffer.
+    if (c->roverflow[0] != '\0') {
+        printf("Refreshed overflow |%s|\n", c->roverflow);
+        ds_append(c->rbuffer, c->roverflow);
+        memset(c->roverflow, 0, INPUT_BUFFER_SIZE);
+    }
+
     c->recv = RS_RECV_NOT_RDY;
     return 0;
 }
@@ -304,6 +312,11 @@ int client_read(Client *c)
     else
     {
         buf[crlf - 2] = '\0';
+
+        // put overflow reads into the overflow buffer.
+        memset(c->roverflow, 0, INPUT_BUFFER_SIZE);
+        memcpy(c->roverflow, &buf[crlf], INPUT_BUFFER_SIZE - crlf);
+
         //todo: put remainin stuff in buffer.
         ds_append(c->rbuffer, buf);
         // flag as ready

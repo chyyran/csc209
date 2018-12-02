@@ -268,7 +268,7 @@ char *print_currently_serving(Ta *ta_list)
     {
         if (ta_list->current_student != NULL)
         {
-            paasprintf(&buf, "TA: %s is serving %s.\n",
+            paasprintf(&buf, "TA: %s is serving %s.\r\n",
                    ta_list->name,
                    ta_list->current_student->name);
             ds_append(ds, buf);
@@ -290,11 +290,11 @@ char *print_currently_serving(Ta *ta_list)
 char *print_full_queue(Student *stu_list)
 {
 
-    DynamicString *ds = ds_from_cstr("Full Queue\n");
+    DynamicString *ds = ds_from_cstr("Full Queue\r\n");
     char *buf;
     while (stu_list != NULL)
     {
-        paasprintf(&buf, "Student %s:%s\n", stu_list->name, stu_list->course->code);
+        paasprintf(&buf, "Student %s:%s\r\n", stu_list->name, stu_list->course->code);
         ds_append(ds, buf);
         free(buf);
         stu_list = stu_list->next_overall;

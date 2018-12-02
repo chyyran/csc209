@@ -79,14 +79,14 @@ int process_course(Client *c)
         {
             client_set_state(c, S_PROMPT_COMMANDS);
             client_write(c, "You have been entered into the queue. While you wait, you can "
-                            "use the command stats to see which TAs are currently serving students.\n");
+                            "use the command stats to see which TAs are currently serving students.\r\n");
             add_student(&stu_list, client_username(c), msg, courses, num_courses, c);
 
             free(msg);
             return 0;
         }
     }
-    client_write(c, "This is not a valid course. Good-bye.");
+    client_write(c, "This is not a valid course. Good-bye.\r\n");
     client_set_state(c, S_INVALID);
     client_close(c);
     free(msg);
@@ -244,7 +244,7 @@ int main(void)
                                 client_write(c, ", ");
                             }
                         }
-                        client_write(c, "\nWhich course are you asking about?\r\n");
+                        client_write(c, "\r\nWhich course are you asking about?\r\n");
                         // add a student here.
                         client_set_state(c, S_PROMPT_COURSES);
                         break;

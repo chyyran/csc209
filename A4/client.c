@@ -178,12 +178,12 @@ int client_list_select(ClientList *l, ClientSocketSet *out_fds)
     return select(l->max_fd + 1, out_fds, NULL, NULL, NULL);
 }
 
+// helper function to extract the client from the list
 void route_around_client(ClientList *l, Client *c)
 {
     Client *current = l->root;
     if (current == c)
     {
-        // this student is first in list
         l->root = c->next;
     }
     else
@@ -192,7 +192,6 @@ void route_around_client(ClientList *l, Client *c)
         {
             current = current->next;
         }
-        // now current points to previous student
         current->next = c->next;
     }
 }
@@ -247,6 +246,8 @@ Client *client_list_remove(ClientList *l, Client *c, Ta **ta_list, Student **stu
 
 ClientList *client_list_collect(ClientList *l, Ta **ta_list, Student **student_list)
 {
+    // We can't use iter here because removing the client will
+    // invalidate the iterator...
     Client *c = l->root;
     while (c && (c->next != NULL))
     {

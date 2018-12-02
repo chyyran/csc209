@@ -5,7 +5,7 @@
 #include <assert.h>
 #include <stdbool.h>
 
-#include "srvman.h"
+#include "client.h"
 #include "dynstr.h"
 
 #define INPUT_BUFFER_SIZE 256
@@ -187,7 +187,9 @@ Client *client_list_remove(ClientList *l, Client *c, Ta **ta_list, Student **stu
         remove_ta(ta_list, c->name);
     }
 
-    FD_CLR(c->sock_fd, &l->fds);
+    if (c->sock_fd <= FD_SETSIZE && c->sock_fd >= 0) {
+        FD_CLR(c->sock_fd, &l->fds);
+    }
     // We do not care about the return value of this close call.
     // If it fails, the client is destroyed regardless.
     // If this close fails, or example if sock_fd is -1, then

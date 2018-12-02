@@ -1,5 +1,6 @@
 #define _GNU_SOURCE
 #include "dynstr.h"
+#include "panic.h"
 
 typedef struct dynstr_s
 {
@@ -7,12 +8,11 @@ typedef struct dynstr_s
     ssize_t len;
 } dynstr_s;
 
-//todo: panic_malloc
 
 DynamicString *ds_new(ssize_t len)
 {
-    DynamicString *ptr = malloc(sizeof(DynamicString));
-    ptr->raw = calloc(len, sizeof(char));
+    DynamicString *ptr = pacalloc(1, sizeof(DynamicString));
+    ptr->raw = pacalloc(len + 1, sizeof(char));
     ptr->len = 0;
     return ptr;
 }
@@ -20,8 +20,8 @@ DynamicString *ds_new(ssize_t len)
 DynamicString *ds_from_cstr(const char *s)
 {
     ssize_t len = strlen(s);
-    DynamicString *ptr = calloc(1, sizeof(DynamicString));
-    ptr->raw = calloc(len, sizeof(char));
+    DynamicString *ptr = pacalloc(1, sizeof(DynamicString));
+    ptr->raw = pacalloc(len + 1, sizeof(char));
     ptr->len = len;
 
     strcpy(ptr->raw, s);

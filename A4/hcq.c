@@ -5,6 +5,7 @@
 #include <time.h>
 #include "hcq.h"
 #include "dynstr.h"
+#include "panic.h"
 #define INPUT_BUFFER_SIZE 256
 #define OUT_BUF_SIZE 1024
 
@@ -71,8 +72,8 @@ int add_student(Student **stu_list_ptr, const char *student_name, char *course_c
     }
 
     // first create the new student struct and set the name
-    Student *new_student = malloc(sizeof(Student));
-    new_student->name = malloc(strlen(student_name) + 1);
+    Student *new_student = pamalloc(sizeof(Student));
+    new_student->name = pamalloc(strlen(student_name) + 1);
     new_student->client = c;
     strcpy(new_student->name, student_name);
 
@@ -160,8 +161,8 @@ int give_up_waiting(Student **stu_list_ptr, char *student_name)
 void add_ta(Ta **ta_list_ptr, const char *ta_name, Client *client)
 {
     // first create the new TA struct and populate
-    Ta *new_ta = malloc(sizeof(Ta));
-    new_ta->name = malloc(strlen(ta_name) + 1);
+    Ta *new_ta = pamalloc(sizeof(Ta));
+    new_ta->name = pamalloc(strlen(ta_name) + 1);
     strcpy(new_ta->name, ta_name);
     new_ta->current_student = NULL;
     new_ta->client = client;
@@ -268,14 +269,14 @@ char *print_currently_serving(Ta *ta_list)
     {
         if (ta_list->current_student != NULL)
         {
-            asprintf(&buf, "TA: %s is serving %s.\n",
+            paasprintf(&buf, "TA: %s is serving %s.\n",
                    ta_list->name,
                    ta_list->current_student->name);
             ds_append(ds, buf);
         }
         else
         {
-            asprintf(&buf, "TA: %s has no student\r\n", ta_list->name);
+            paasprintf(&buf, "TA: %s has no student\r\n", ta_list->name);
             ds_append(ds, buf);
         }
         ta_list = ta_list->next;
@@ -294,7 +295,7 @@ char *print_full_queue(Student *stu_list)
     char *buf;
     while (stu_list != NULL)
     {
-        asprintf(&buf, "Student %s:%s\n", stu_list->name, stu_list->course->code);
+        paasprintf(&buf, "Student %s:%s\n", stu_list->name, stu_list->course->code);
         ds_append(ds, buf);
         free(buf);
         stu_list = stu_list->next_overall;

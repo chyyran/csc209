@@ -1,7 +1,7 @@
 #ifndef HCQ_H
 #define HCQ_H
 
-#include "srvman.h"
+#include "client.h"
 
 /* Students are kept in order by time with newest 
    students at the end of the lists. */

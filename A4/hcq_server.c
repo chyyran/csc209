@@ -10,7 +10,8 @@
 #include <arpa/inet.h>
 
 #include "hcq.h"
-#include "srvman.h"
+#include "client.h"
+#include "panic.h"
 
 #ifndef PORT
 #define PORT 30000
@@ -25,7 +26,7 @@
  */
 int error(char *msg, char **buf)
 {
-    asprintf(buf, "Error: %s\n", msg);
+    paasprintf(buf, "Error: %s\n", msg);
     return 0;
 }
 
@@ -83,7 +84,7 @@ int process_course(Client *c)
             client_write(c, "You have been entered into the queue. While you wait, you can "
                             "use the command stats to see which TAs are currently serving students.\n");
             add_student(&stu_list, client_username(c), msg, courses, num_courses, c);
-            
+
             free(msg);
             return 0;
         }
@@ -118,12 +119,16 @@ int process_command(Client *c)
         client_write(c, response);
         free(response);
     }
-    else if (!strcmp("next", input) && client_type(c) == CLIENT_TA) {
+    else if (!strcmp("next", input) && client_type(c) == CLIENT_TA)
+    {
         next_overall(client_username(c), &ta_list, &stu_list);
         Ta *ta = find_ta(ta_list, client_username(c));
-        Client* st_client = ta->current_student->client;
-        client_write(st_client, "Your turn to see the TA.\nWe are disconnecting you from the server now. Press Ctrl-C to close nc\n");
-        client_close(st_client);
+        if (ta->current_student)
+        {
+            Client *st_client = ta->current_student->client;
+            client_write(st_client, "Your turn to see the TA.\nWe are disconnecting you from the server now. Press Ctrl-C to close nc\n");
+            client_close(st_client);
+        }
     }
     else
     {
@@ -136,7 +141,6 @@ int process_command(Client *c)
 
 int main(void)
 {
-
     if ((courses = malloc(sizeof(Course) * 3)) == NULL)
     {
         perror("malloc for course list\n");
@@ -167,10 +171,12 @@ int main(void)
 
     // Ensure port is freed when process terminates
     int on = 1;
-    int status = setsockopt([sock_fd], SOL_SOCKET, SO_REUSEADDR,
-                            (const char *) &on, sizeof(on));
-    if(status == -1) {
+    int status = setsockopt(sock_fd, SOL_SOCKET, SO_REUSEADDR,
+                            (const char *)&on, sizeof(on));
+    if (status == -1)
+    {
         perror("setsockopt -- REUSEADDR");
+        exit(1);
     }
 
     // Bind the selected port to the socket.
@@ -251,7 +257,6 @@ int main(void)
                     client_prep_read(c);
                     break;
                 case S_PROMPT_COMMANDS:
-                    client_write(c, "> ");
                     client_prep_read(c);
                     break;
                 default:
@@ -327,84 +332,3 @@ int main(void)
         client_list_collect(clients, &ta_list, &stu_list);
     }
 }
-
-// int main_old(int argc, char *argv[])
-// {
-//     if (argc < 1 || argc > 2)
-//     {
-//         fprintf(stderr, "Usage: ./helpcentre [commands_filename]\n");
-//         exit(1);
-//     }
-//     int batch_mode = (argc == 3);
-//     char input[INPUT_BUFFER_SIZE];
-//     FILE *input_stream;
-
-//     if ((courses = malloc(sizeof(Course) * 3)) == NULL)
-//     {
-//         perror("malloc for course list\n");
-//         exit(1);
-//     }
-//     strcpy(courses[0].code, "CSC108");
-//     strcpy(courses[1].code, "CSC148");
-//     strcpy(courses[2].code, "CSC209");
-
-//     // for holding arguments to individual commands passed to sub-procedure
-//     char *cmd_argv[INPUT_ARG_MAX_NUM];
-//     int cmd_argc;
-
-//     if (batch_mode)
-//     {
-//         input_stream = fopen(argv[2], "r");
-//         if (input_stream == NULL)
-//         {
-//             perror("Error opening file");
-//             exit(1);
-//         }
-//     }
-//     else
-//     { // interactive mode
-//         input_stream = stdin;
-//     }
-
-//     printf("Welcome to the Help Centre Queuing System\nPlease type a command:\n>");
-
-//     while (fgets(input, INPUT_BUFFER_SIZE, input_stream) != NULL)
-//     {
-//         char *msg = NULL;
-//         // only echo the line in batch mode since in interactive mode the user
-//         // has just typed the line
-//         if (batch_mode)
-//         {
-//             printf("%s", input);
-//         }
-//         // tokenize arguments
-//         // Notice that this tokenizing is not sophisticated enough to
-//         // handle quoted arguments with spaces so names can not have spaces.
-//         char *next_token = strtok(input, DELIM);
-//         cmd_argc = 0;
-//         while (next_token != NULL)
-//         {
-//             if (cmd_argc >= INPUT_ARG_MAX_NUM)
-//             {
-//                 error("Too many arguments.", &msg);
-//                 cmd_argc = 0;
-//                 break;
-//             }
-//             cmd_argv[cmd_argc] = next_token;
-//             cmd_argc++;
-//             next_token = strtok(NULL, DELIM);
-//         }
-
-//         if (cmd_argc > 0 && process_args(cmd_argc, cmd_argv, &msg) == -1)
-//         {
-//             break; // can only reach if quit command was entered
-//         }
-//         printf(">");
-//     }
-
-//     if (batch_mode)
-//     {
-//         fclose(input_stream);
-//     }
-//     return 0;
-// }

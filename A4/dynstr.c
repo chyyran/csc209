@@ -8,10 +8,10 @@ typedef struct dynstr_s
     ssize_t len;
 } dynstr_s;
 
-DynamicString *ds_new(ssize_t len)
+DynamicString *ds_new()
 {
     DynamicString *ptr = pacalloc(1, sizeof(DynamicString));
-    ptr->raw = pacalloc(len + 1, sizeof(char));
+    ptr->raw = pacalloc(1, sizeof(char));
     ptr->len = 0;
     return ptr;
 }

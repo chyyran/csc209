@@ -12,7 +12,10 @@
 #define OUTPUT_BUFFER_SIZE 2048
 #define INPUT_ARG_MAX_NUM 3
 #define DELIM " \n"
+
+/** forward declaration for find_network_newline */
 int find_network_newline(const char *buf, int n);
+
 typedef struct client_s
 {
     int sock_fd;
@@ -24,8 +27,9 @@ typedef struct client_s
 
     Client *next;
     Client *prev;
+    
     ClientRecvState recv;
-    ClientInitState state;
+    ClientPromptState state;
 } client_s;
 
 typedef struct client_list_s
@@ -66,25 +70,25 @@ ClientType client_type(Client *c)
     return c->type;
 }
 
-ClientInitState client_state(Client *c)
+ClientPromptState client_state(Client *c)
 {
     return c->state;
 }
 
-Client *client_set_state(Client *c, ClientInitState state)
+Client *client_set_state(Client *c, ClientPromptState state)
 {
     c->state = state;
     return c;
 }
 
-Client *client_next(Client *c)
+Client *client_iter_next(Client *c)
 {
     if (c == NULL)
         return NULL;
     return c->next;
 }
 
-Client *client_list_root(ClientList *l)
+Client *client_iter_begin(ClientList *l)
 {
     return l->root;
 }
@@ -139,12 +143,12 @@ void client_close(Client *c)
     c->recv = RS_DISCONNECTED;
 }
 
-fd_set client_fdset_clone(ClientList *l)
+ClientSocketSet client_list_fdset_clone(ClientList *l)
 {
     return l->fds;
 }
 
-int client_list_select(ClientList *l, fd_set *out_fds)
+int client_list_select(ClientList *l, ClientSocketSet *out_fds)
 {
     return select(l->max_fd + 1, out_fds, NULL, NULL, NULL);
 }
@@ -208,7 +212,7 @@ Client *client_list_remove(ClientList *l, Client *c, Ta **ta_list, Student **stu
 
 ClientList *client_list_collect(ClientList *l, Ta **ta_list, Student **student_list)
 {
-    for (Client *c = client_list_root(l); c != NULL; c = client_next(c))
+    for (Client *c = client_iter_begin(l); c != NULL; c = client_iter_next(c))
     {
         if (c->recv == RS_DISCONNECTED)
         {
@@ -219,7 +223,7 @@ ClientList *client_list_collect(ClientList *l, Ta **ta_list, Student **student_l
     return l;
 }
 
-void accept_connection(ClientList *l)
+void client_list_accept_connection(ClientList *l)
 {
     int client_fd = accept(l->sock_fd, NULL, NULL);
     if (client_fd < 0)
@@ -268,7 +272,7 @@ int client_prep_read(Client *c)
     {
         return -1;
     }
-    c->rbuffer = ds_new(0);
+    c->rbuffer = ds_new();
 
     // push overflow into the read buffer.
     if (c->roverflow[0] != '\0') {

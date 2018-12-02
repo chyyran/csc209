@@ -202,7 +202,7 @@ int main(void)
         // select updates the fd_set it receives, so we always use a copy and retain the original.
         client_list_collect(clients, &ta_list, &stu_list);
 
-        for (Client *c = client_list_root(clients); c != NULL; c = client_next(c))
+        for (Client *c = client_iter_begin(clients); c != NULL; c = client_iter_next(c))
         {
             if (client_recv_state(c) == RS_RECV_PREP)
             {
@@ -268,7 +268,7 @@ int main(void)
         // this will mark the client as dead.
         client_list_collect(clients, &ta_list, &stu_list);
 
-        fd_set listen_fds = client_fdset_clone(clients);
+        fd_set listen_fds = client_list_fdset_clone(clients);
         int nready = client_list_select(clients, &listen_fds);
         if (nready == -1)
         {
@@ -279,11 +279,11 @@ int main(void)
         // Is it the original socket? Create a new connection ...
         if (FD_ISSET(sock_fd, &listen_fds))
         {
-            accept_connection(clients);
+            client_list_accept_connection(clients);
             printf("Accepted connection\n");
         }
 
-        for (Client *c = client_list_root(clients); c != NULL; c = client_next(c))
+        for (Client *c = client_iter_begin(clients); c != NULL; c = client_iter_next(c))
         {
             int fd = client_fd(c);
             if (fd != -1 && FD_ISSET(fd, &listen_fds))

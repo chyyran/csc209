@@ -262,7 +262,7 @@ char *print_currently_serving(Ta *ta_list)
     }
 
     char *buf;
-    DynamicString* ds = ds_new(0);
+    DynamicString* ds = ds_new();
     while (ta_list != NULL)
     {
         if (ta_list->current_student != NULL)

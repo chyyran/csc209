@@ -6,7 +6,6 @@
 #include "hcq.h"
 #include "dynstr.h"
 #include "panic.h"
-#define INPUT_BUFFER_SIZE 256
 #define OUT_BUF_SIZE 1024
 
 /*

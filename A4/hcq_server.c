@@ -16,10 +16,7 @@
 #ifndef PORT
 #define PORT 30000
 #endif
-
-#define MAX_BACKLOG 5
-#define INPUT_BUFFER_SIZE 256
-#define INPUT_ARG_MAX_NUM 3
+#define MAX_BACKLOG 3
 #define DELIM " \n"
 
 /* Print a formatted error message to stderr.
@@ -126,13 +123,13 @@ int process_command(Client *c)
         if (ta->current_student)
         {
             Client *st_client = ta->current_student->client;
-            client_write(st_client, "Your turn to see the TA.\nWe are disconnecting you from the server now. Press Ctrl-C to close nc\n");
+            client_write(st_client, "Your turn to see the TA.\r\nWe are disconnecting you from the server now. Press Ctrl-C to close nc\r\n");
             client_close(st_client);
         }
     }
     else
     {
-        client_write(c, "Incorrect syntax\n");
+        client_write(c, "Incorrect syntax\r\n");
     }
 
     free(input);
@@ -215,22 +212,22 @@ int main(void)
                     continue;
 
                 case S_PROMPT_USERNAME:
-                    client_write(c, "Welcome to the Help Centre, what is your name?\n");
+                    client_write(c, "Welcome to the Help Centre, what is your name?\r\n");
                     client_prep_read(c);
                     break;
                 case S_PROMPT_TYPE:
-                    client_write(c, "Are you a TA or a Student (enter T or S)?\n");
+                    client_write(c, "Are you a TA or a Student (enter T or S)?\r\n");
                     client_prep_read(c);
                     break;
                 case S_PROMPT_TYPE_INVALID:
-                    client_write(c, "Invalid role (enter T or S)?\n");
+                    client_write(c, "Invalid role (enter T or S)?\r\n");
                     client_prep_read(c);
                     break;
                 case S_PROMPT_MOTD:
                     switch (client_type(c))
                     {
                     case CLIENT_TA:
-                        client_write(c, "Valid commands for TA:\n\tstats\n\tnext\n\t(or use Ctrl-C to leave)\n");
+                        client_write(c, "Valid commands for TA:\r\n\tstats\r\n\tnext\r\n\t(or use Ctrl-C to leave)\r\n");
                         // add a TA here.
                         add_ta(&ta_list, client_username(c), c);
                         client_set_state(c, S_PROMPT_COMMANDS);
@@ -247,7 +244,7 @@ int main(void)
                                 client_write(c, ", ");
                             }
                         }
-                        client_write(c, "\nWhich course are you asking about?\n");
+                        client_write(c, "\nWhich course are you asking about?\r\n");
                         // add a student here.
                         client_set_state(c, S_PROMPT_COURSES);
                         break;

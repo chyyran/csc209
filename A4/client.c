@@ -8,7 +8,8 @@
 #include "client.h"
 #include "dynstr.h"
 
-#define INPUT_BUFFER_SIZE 256
+#define INPUT_BUFFER_SIZE 30
+#define OUTPUT_BUFFER_SIZE 1024
 #define INPUT_ARG_MAX_NUM 3
 #define DELIM " \n"
 int find_network_newline(const char *buf, int n);
@@ -16,8 +17,8 @@ typedef struct client_s
 {
     int sock_fd;
     ClientType type;
-    char name[INPUT_BUFFER_SIZE];
-    char wbuffer[INPUT_BUFFER_SIZE];
+    char name[INPUT_BUFFER_SIZE + 1];
+    char wbuffer[OUTPUT_BUFFER_SIZE];
 
     DynamicString *rbuffer;
 
@@ -95,8 +96,9 @@ const char *client_username(Client *c)
 
 Client *client_set_username(Client *c, const char *username)
 {
-    memset(c->name, 0, INPUT_BUFFER_SIZE);
-    strcpy(c->name, username);
+    memset(c->name, 0, INPUT_BUFFER_SIZE + 1);
+    strncpy(c->name, username, INPUT_BUFFER_SIZE);
+    c->name[INPUT_BUFFER_SIZE] = '\0';
     return c;
 }
 
@@ -233,7 +235,7 @@ void accept_connection(ClientList *l)
 
 char *client_ready_message(Client *c)
 {
-    char *ptr = ds_into_raw(c->rbuffer);
+    char *ptr = ds_into_raw_truncate(c->rbuffer, INPUT_BUFFER_SIZE);
     c->recv = RS_RECV_PREP;
     c->rbuffer = NULL;
     return ptr;
@@ -249,8 +251,8 @@ int client_write(Client *c, const char *message)
     if (c->sock_fd == -1 || c->recv == RS_DISCONNECTED)
         return -1;
     //todo panic_write
-    memset(c->wbuffer, 0, INPUT_BUFFER_SIZE);
-    snprintf(c->wbuffer, INPUT_BUFFER_SIZE - 1, "%s", message);
+    memset(c->wbuffer, 0, OUTPUT_BUFFER_SIZE);
+    snprintf(c->wbuffer, OUTPUT_BUFFER_SIZE - 1, "%s", message);
     int nbytes = write(c->sock_fd, c->wbuffer, strlen(c->wbuffer));
 
     if (nbytes == -1) {
@@ -285,7 +287,7 @@ int client_read(Client *c)
         return -1;
     }
 
-    char buf[INPUT_BUFFER_SIZE + 1] = {'\0'};
+    char buf[INPUT_BUFFER_SIZE + 3] = {'\0'};
     int nbytes = read(c->sock_fd, buf, INPUT_BUFFER_SIZE);
     if (nbytes <= 0)
     {
@@ -302,6 +304,7 @@ int client_read(Client *c)
     else
     {
         buf[crlf - 2] = '\0';
+        //todo: put remainin stuff in buffer.
         ds_append(c->rbuffer, buf);
         // flag as ready
         c->recv = RS_RECV_RDY;

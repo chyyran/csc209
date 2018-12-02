@@ -8,7 +8,6 @@ typedef struct dynstr_s
     ssize_t len;
 } dynstr_s;
 
-
 DynamicString *ds_new(ssize_t len)
 {
     DynamicString *ptr = pacalloc(1, sizeof(DynamicString));
@@ -30,12 +29,12 @@ DynamicString *ds_from_cstr(const char *s)
 
 DynamicString *ds_append(DynamicString *ds, const char *s)
 {
-    char* new_ptr;
+    char *new_ptr;
     if (asprintf(&new_ptr, "%s%s", ds->raw, s) == -1)
     {
         // if asprintf fails, then nreturn th previous string.
         return ds;
-    } 
+    }
 
     free(ds->raw);
     ds->raw = new_ptr;
@@ -45,14 +44,29 @@ DynamicString *ds_append(DynamicString *ds, const char *s)
 
 ssize_t ds_len(DynamicString *ds)
 {
-    return ds->len;
+    return ds->len + 1;
 }
 
 char *ds_into_raw(DynamicString *ds)
 {
-    char* raw = ds->raw;
+    char *raw = ds->raw;
     free(ds);
     return raw;
+}
+
+char *ds_into_raw_truncate(DynamicString *ds, int len)
+{
+    if (len < ds_len(ds))
+    {
+        char *raw = ds->raw;
+        raw[len] = '\0';
+        free(ds);
+        return raw;
+    }
+    else
+    {
+        return ds_into_raw(ds);
+    }
 }
 
 void ds_free(DynamicString *ds)

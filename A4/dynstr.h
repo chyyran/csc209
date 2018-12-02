@@ -15,6 +15,7 @@ DynamicString *ds_append(DynamicString *ds, const char *s);
 ssize_t ds_len(DynamicString *ds);
 
 char *ds_into_raw(DynamicString *ds);
+char *ds_into_raw_truncate(DynamicString *ds, int len);
 
 void ds_free(DynamicString *ds);
 #endif

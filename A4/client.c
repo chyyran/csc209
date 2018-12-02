@@ -49,7 +49,6 @@ typedef struct client_list_s
 {
     // doubly-inked list members
     Client *root;
-    Client *end;
 
     // the set of file descrptors to monitor for each client in this ClientList.
     fd_set fds;

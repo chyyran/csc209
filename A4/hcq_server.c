@@ -34,16 +34,25 @@ Student *stu_list = NULL;
 Course *courses;
 int num_courses = 3;
 
+// Process the response from the client as its username,
+// advancing the prompt to ask for the type of client.
 int process_username(Client *c)
 {
     char *msg = client_ready_message(c);
     client_set_username(c, msg);
     printf("Set client username to: %s\n", msg);
+    
+    // ask for the type next loop.
     client_set_state(c, S_PROMPT_TYPE);
     free(msg);
     return 0;
 }
 
+// Process the response from the client as its
+// type.
+// If the response is valid, then will transition the
+// prompt state to S_PROMPT_MOTD, otherwise will
+// ask again until a valid response
 int process_type(Client *c)
 {
     char *msg = client_ready_message(c);
@@ -59,6 +68,7 @@ int process_type(Client *c)
     {
         client_set_type(c, CLIENT_STUDENT);
         printf("Set client type to Student\n");
+        
         client_set_state(c, S_PROMPT_MOTD);
     }
     else
@@ -69,6 +79,8 @@ int process_type(Client *c)
     return 0;
 }
 
+// Process the response form the client as a 
+// course code.
 int process_course(Client *c)
 {
     char *msg = client_ready_message(c);
@@ -80,6 +92,9 @@ int process_course(Client *c)
             client_set_state(c, S_PROMPT_COMMANDS);
             client_write(c, "You have been entered into the queue. While you wait, you can "
                             "use the command stats to see which TAs are currently serving students.\r\n");
+            
+            // Add the student to the student list now that we know what course
+            // they want to queue for.
             add_student(&stu_list, client_username(c), msg, courses, num_courses, c);
 
             free(msg);
@@ -87,13 +102,15 @@ int process_course(Client *c)
         }
     }
     client_write(c, "This is not a valid course. Good-bye.\r\n");
+
+    // set the state to invalid, then mark the client as disconnected 
     client_set_state(c, S_INVALID);
     client_close(c);
     free(msg);
     return 0;
 }
 
-int process_command(Client *c)
+int process_command(ClientList *l, Client *c)
 {
     // tokenize arguments
     // Notice that this tokenizing is not sophisticated enough to
@@ -118,13 +135,18 @@ int process_command(Client *c)
     }
     else if (!strcmp("next", input) && client_type(c) == CLIENT_TA)
     {
+        // Try and assign the TA a student
         next_overall(client_username(c), &ta_list, &stu_list);
+
+        // Find the TA that this client is associated with
         Ta *ta = find_ta(ta_list, client_username(c));
+
+        // If the TA has a student, disconnect the student.
         if (ta->current_student)
         {
             Client *st_client = ta->current_student->client;
             client_write(st_client, "Your turn to see the TA.\r\nWe are disconnecting you from the server now. Press Ctrl-C to close nc\r\n");
-            client_close(st_client);
+            client_list_remove(l, st_client, &ta_list, &stu_list, 1);
         }
     }
     else
@@ -192,16 +214,21 @@ int main(void)
         exit(1);
     }
 
-    // The client accept - message accept loop. First, we prepare to listen to multiple
-    // file descriptors by initializing a set of file descriptors.
-
+   
+    // Initialize a list of clients to manage.
+    // All socket operations should now take place within this ClientList context.
     ClientList *clients = client_list_new(sock_fd);
 
     while (1)
     {
-        // select updates the fd_set it receives, so we always use a copy and retain the original.
+        // Garbage collect disconnected clients before trying to send prompts.
         client_list_collect(clients, &ta_list, &stu_list);
 
+        // Send prompts for every client preparing to be ready for reading from.
+        // Notice that client_prep_read must be called after the prompt, 
+        // without this call the client would not be able to be read from.
+
+        // See the documentation for client_prep_read in client.h
         for (Client *c = client_iter_begin(clients); c != NULL; c = client_iter_next(c))
         {
             if (client_recv_state(c) == RS_RECV_PREP)
@@ -224,20 +251,24 @@ int main(void)
                     client_prep_read(c);
                     break;
                 case S_PROMPT_MOTD:
+                    // Nested switch is sketchy, but the alternative are
+                    // gotos.
                     switch (client_type(c))
                     {
                     case CLIENT_TA:
                         client_write(c, "Valid commands for TA:\r\n\tstats\r\n\tnext\r\n\t(or use Ctrl-C to leave)\r\n");
-                        // add a TA here.
+                        
+                        // If the client is a TA, we have all the information we need to add the TA to the 
+                        // TA list.
                         add_ta(&ta_list, client_username(c), c);
+
+                        // prompt commands on next loop iteration.
                         client_set_state(c, S_PROMPT_COMMANDS);
                         break;
                     case CLIENT_STUDENT:
-                        //todo: make dynamic
                         client_write(c, "Valid courses: ");
                         for (int i = 0; i < num_courses; i++)
                         {
-                            // this could be done better...
                             client_write(c, courses[i].code);
                             if (i < num_courses - 1)
                             {
@@ -245,10 +276,13 @@ int main(void)
                             }
                         }
                         client_write(c, "\r\nWhich course are you asking about?\r\n");
-                        // add a student here.
                         client_set_state(c, S_PROMPT_COURSES);
+                        // after this prompt, if the choice is valid, the student will be
+                        // created and added to the student list.
                         break;
                     case CLIENT_UNSET:
+
+                        // should never reach here
                         break;
                     }
                     client_prep_read(c);
@@ -268,7 +302,7 @@ int main(void)
         // this will mark the client as dead.
         client_list_collect(clients, &ta_list, &stu_list);
 
-        fd_set listen_fds = client_list_fdset_clone(clients);
+        ClientSocketSet listen_fds = client_list_fdset_clone(clients);
         int nready = client_list_select(clients, &listen_fds);
         if (nready == -1)
         {
@@ -289,12 +323,14 @@ int main(void)
             if (fd != -1 && FD_ISSET(fd, &listen_fds))
             {
                 // client_recv_state may change in between calls.
+                // Only do a read if the state is RS_RECV_NOT_RDY.
                 if (client_recv_state(c) == RS_RECV_NOT_RDY)
                 {
                     client_read(c);
                 }
 
                 // last read may have changed the recv state.
+                // if so, process the mesage.
                 if (client_recv_state(c) == RS_RECV_RDY)
                 {
                     switch (client_state(c))
@@ -310,7 +346,7 @@ int main(void)
                         process_course(c);
                         break;
                     case S_PROMPT_COMMANDS:
-                        process_command(c);
+                        process_command(clients, c);
                         break;
                     case S_INVALID:
                         continue;

@@ -18,26 +18,44 @@ int find_network_newline(const char *buf, int n);
 
 typedef struct client_s
 {
+    // The file descriptor to the socket this client manages
     int sock_fd;
+
+    // The type of the client.
     ClientType type;
+
+    // The client's username.
     char name[INPUT_BUFFER_SIZE + 1];
+
+    // The write buffer used to write to the owned socket.
     char wbuffer[OUTPUT_BUFFER_SIZE];
+
+    // The buffer used to store overflow reads.
     char roverflow[INPUT_BUFFER_SIZE];
+
+    // The DynamicString buffer used to store in progress reads.
     DynamicString *rbuffer;
 
+    // doubly-linked list members
     Client *next;
     Client *prev;
-    
+
+    // client state tracking.
     ClientRecvState recv;
     ClientPromptState state;
 } client_s;
 
 typedef struct client_list_s
 {
+    // doubly-inked list members
     Client *root;
     Client *end;
+
+    // the set of file descrptors to monitor for each client in this ClientList.
     fd_set fds;
     int max_fd;
+
+    // the listener socket that this ClientList listens for new connections on.
     int sock_fd;
 } client_list_s;
 
@@ -117,13 +135,20 @@ ClientList *client_list_append(ClientList *l, Client *c)
     {
         l->root = c;
     }
-    c->prev = l->end;
-    c->next = NULL;
-    if (l->end != NULL)
+    else
     {
-        l->end->next = c;
+
+        Client *last = l->root;
+        while (last->next != NULL)
+        {
+            last = last->next;
+        }
+        // at this point last is the last real student in the overall list
+        last->next = c;
+        c->prev = last;
+        c->next = NULL;
     }
-    l->end = c;
+
     FD_SET(c->sock_fd, &l->fds);
 
     if (c->sock_fd > l->max_fd)
@@ -153,38 +178,42 @@ int client_list_select(ClientList *l, ClientSocketSet *out_fds)
     return select(l->max_fd + 1, out_fds, NULL, NULL, NULL);
 }
 
-// returns the previous
-Client *client_list_remove(ClientList *l, Client *c, Ta **ta_list, Student **student_list)
+void route_around_client(ClientList *l, Client *c)
 {
-    printf("Disconnecting client %d\n", c->sock_fd);
-    assert(c != NULL);
-    assert(l != NULL);
-    Client *prev = c->prev;
-    if (c->next != NULL && c->prev != NULL)
+    Client *current = l->root;
+    if (current == c)
     {
-        // c is between two clients.
-        c->prev->next = c->next;
-    }
-
-    if (c->next == NULL)
-    {
-        // c is the last client:
-        // update the list tail, and
-        // delete the next.
-        l->end = c->prev;
-        if (c->prev != NULL)
-        {
-            c->prev->next = NULL;
-        }
-    }
-    if (c->prev == NULL)
-    {
-        // c is the first client
-        // attach root to the next client.
+        // this student is first in list
         l->root = c->next;
     }
+    else
+    {
+        while (current->next != c)
+        {
+            current = current->next;
+        }
+        // now current points to previous student
+        current->next = c->next;
+    }
+}
 
-    if (c->type == CLIENT_STUDENT)
+Client *client_list_remove(ClientList *l, Client *c, Ta **ta_list, Student **student_list, int free_later)
+{
+    printf("Disconnecting client %d\n", c->sock_fd);
+
+    // if a null is passed into this
+    // function, fail immediately.
+    assert(c != NULL);
+    assert(l != NULL);
+
+    // some housekeeping to maining the order of the
+    // linked list.
+    Client *prev = c->prev;
+    route_around_client(l, c);
+
+    // Free and remove from queue any
+    // associated students or TAs.
+    if (c->type == CLIENT_STUDENT && !free_later)
     {
         give_up_waiting(student_list, c->name);
     }
@@ -193,17 +222,23 @@ Client *client_list_remove(ClientList *l, Client *c, Ta **ta_list, Student **stu
         remove_ta(ta_list, c->name);
     }
 
-    if (c->sock_fd <= FD_SETSIZE && c->sock_fd >= 0) {
+    // Clear the socket from the set to listen to,
+    // if the socket is still valid.
+    // Not checking for this may cause a segfault...
+    if (c->sock_fd <= FD_SETSIZE && c->sock_fd >= 0)
+    {
         FD_CLR(c->sock_fd, &l->fds);
-    }
-    // We do not care about the return value of this close call.
-    // If it fails, the client is destroyed regardless.
-    // If this close fails, or example if sock_fd is -1, then
-    // there's nothing we can do anyways.
 
-    // There is no way to write or read to this client anymore once
-    // this function returns.
-    close(c->sock_fd);
+        // We do not care about the return value of this close call.
+        // If it fails, the client is destroyed regardless.
+        // If this close fails, or example if sock_fd is -1, then
+        // there's nothing we can do anyways.
+
+        // There is no way to write or read to this client anymore once
+        // this function returns.
+        close(c->sock_fd);
+    }
+
     printf("Client disconnected %d\n", c->sock_fd);
     // free the client
     free(c);
@@ -212,11 +247,16 @@ Client *client_list_remove(ClientList *l, Client *c, Ta **ta_list, Student **stu
 
 ClientList *client_list_collect(ClientList *l, Ta **ta_list, Student **student_list)
 {
-    for (Client *c = client_iter_begin(l); c != NULL; c = client_iter_next(c))
+    Client *c = l->root;
+    while (c && (c->next != NULL))
     {
         if (c->recv == RS_DISCONNECTED)
         {
-            c = client_list_remove(l, c, ta_list, student_list);
+            Client *next = c->next;
+            client_list_remove(l, c, ta_list, student_list, 0);
+            c = next;
+        } else {
+            c = c->next;
         }
     }
 
@@ -239,8 +279,12 @@ void client_list_accept_connection(ClientList *l)
 
 char *client_ready_message(Client *c)
 {
+    // ds_into_raw_* will consume the DynamicString, returning
+    // the string contents.
     char *ptr = ds_into_raw_truncate(c->rbuffer, INPUT_BUFFER_SIZE);
     c->recv = RS_RECV_PREP;
+
+    // rbuffer was freed by the call to ds_into_raw, so we set it to NULL.
     c->rbuffer = NULL;
     return ptr;
 }
@@ -259,7 +303,8 @@ int client_write(Client *c, const char *message)
     snprintf(c->wbuffer, OUTPUT_BUFFER_SIZE - 1, "%s", message);
     int nbytes = write(c->sock_fd, c->wbuffer, strlen(c->wbuffer));
 
-    if (nbytes == -1) {
+    if (nbytes == -1)
+    {
         printf("Tried to write to broken pipe, marking client as dead\n");
         c->recv = RS_DISCONNECTED;
     }
@@ -275,7 +320,8 @@ int client_prep_read(Client *c)
     c->rbuffer = ds_new();
 
     // push overflow into the read buffer.
-    if (c->roverflow[0] != '\0') {
+    if (c->roverflow[0] != '\0')
+    {
         printf("Refreshed overflow |%s|\n", c->roverflow);
         ds_append(c->rbuffer, c->roverflow);
         memset(c->roverflow, 0, INPUT_BUFFER_SIZE);

@@ -119,9 +119,6 @@ typedef enum client_prompt_state_e
      * The proper transition for this State is to
      * S_PROMPT_TYPE_INVALID if the response is invalid,
      * or to S_PROMPT_MOTD if their response is valid.
-     * 
-     * If the client is a Student, the proper transition
-     * is to S_PROMPT_COURSES rather than S_PROMPT_MOTD.
      */
     S_PROMPT_TYPE = 1,
 
@@ -139,7 +136,12 @@ typedef enum client_prompt_state_e
      * Shows the client the message of the day, (their valid
      * commands, depending on their type), and should then 
      * immediately transition to the S_PROMPT_COMMANDS state
-     * without prompting the client for any input.
+     * without prompting the client for any input if the Client
+     * is a TA.
+     * 
+     * If the client is a Student, then the MOTD should be
+     * the available courses, and then move to prompting the
+     * student for their choice of course (S_PROMPT_COURSES).
      */
     S_PROMPT_MOTD = 3,
 
@@ -337,6 +339,9 @@ int client_read(Client *c);
  * read buffers until client_prep_read is called. It will also
  * change the socket communication state to RS_RECV_PREP, and
  * as such, can only be called once per fully-read message.
+ * 
+ * The returned string has newline characters stripped, and
+ * is guaranteed to be null terminated.
  */
 char *client_ready_message(Client *c);
 
@@ -424,8 +429,11 @@ ClientList *client_list_append(ClientList *l, Client *c);
  * The Client's socket file descriptor will also be cleared from
  * the set of file descriptors to be selected on from 
  * client_list_select.
+ * 
+ * If free_later is true, then if the client is a student, the
+ * student will not be freed.
  */ 
-Client *client_list_remove(ClientList *l, Client *c, Ta **ta_list, Student **student_list);
+Client *client_list_remove(ClientList *l, Client *c, Ta **ta_list, Student **student_list, int free_later);
 
 /**
  * Iterates through all Clients in the ClientList context,

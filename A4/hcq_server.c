@@ -146,6 +146,14 @@ int process_command(ClientList *l, Client *c)
         {
             Client *st_client = ta->current_student->client;
             client_write(st_client, "Your turn to see the TA.\r\nWe are disconnecting you from the server now. Press Ctrl-C to close nc\r\n");
+            
+            // Although this will free the client belonging to the student, 
+            // c is not touched and thus client_iter_next(c) will work, and
+            // the iterator is still safe.
+
+            // additionally, we want to keep the student allocated until 
+            // it's freed by the hcq lifecycle functions, so indicate not
+            // to free the student when freeing the associated client.
             client_list_remove(l, st_client, &ta_list, &stu_list, 1);
         }
     }

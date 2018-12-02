@@ -367,11 +367,11 @@ void client_close(Client *c);
  * Used to iterate through clients in a ClientList context.
  * Use with client_iter_next to advance the iterator.
  * 
- * Do not remove any Clients from the ClientList context
- * while an iterating through the ClientList. Doing so
- * will not invalidate the iterator, but may cause
- * undefined behaviour if an operation is attempted on
- * a removed client.
+ * Be very careful when removing any Clients from 
+ * the ClientList context while an iterating through 
+ * the ClientList. Doing so will not invalidate the 
+ * iterator, but may cause undefined behaviour if an
+ * operation is attempted on a removed client.
  * 
  * Instead, mark the client as disconnected using
  * client_close, then call client_list_collect after
@@ -386,11 +386,11 @@ Client *client_iter_begin(ClientList *c);
  * Used with client_iter_begin to obtain an iterator,
  * or a reference to the first Client.
  * 
- * Do not remove any Clients from the ClientList context
- * while an iterating through the ClientList. Doing so
- * will not invalidate the iterator, but may cause
- * undefined behaviour if an operation is attempted on
- * a removed client.
+ * Be very careful when removing any Clients from 
+ * the ClientList context while an iterating through 
+ * the ClientList. Doing so will not invalidate the 
+ * iterator, but may cause undefined behaviour if an
+ * operation is attempted on a removed client.
  * 
  * Instead, mark the client as disconnected using
  * client_close, then call client_list_collect after

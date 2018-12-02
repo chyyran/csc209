@@ -40,7 +40,8 @@ int add_student(Student **stu_list_ptr, const char *student_name, char *course_n
 int give_up_waiting(Student **stu_list_ptr, char *student_name);
 
 void add_ta(Ta **ta_list_ptr, const char *ta_name, Client *c);
-int remove_ta(Ta **ta_list_ptr, char *ta_name);
+int remove_ta(Ta **ta_list_ptr, Student **stu_list_ptr, char *ta_name);
+int take_student(Ta *ta, Student **stu_list_ptr, Student *to_serve);
 
 //  if student is currently being served then this finishes this student
 //    if there is no-one else waiting then the currently being served gets

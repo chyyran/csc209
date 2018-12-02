@@ -10,7 +10,7 @@ typedef struct student Student;
 typedef struct course Course;
 typedef struct ta Ta;
 int give_up_waiting(Student **stu_list_ptr, char *student_name);
-int remove_ta(Ta **ta_list_ptr, char *ta_name);
+int remove_ta(Ta **ta_list_ptr, Student **stu_list_ptr, char *ta_name);
 
 /**
  * A Client encapsulates a socket and its associated buffers used for

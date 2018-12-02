@@ -169,10 +169,11 @@ void add_ta(Ta **ta_list_ptr, const char *ta_name, Client *client)
     *ta_list_ptr = new_ta;
 }
 
-/* remove this Ta from the ta_list and free the associated memory
+/* Remove this Ta from the ta_list and free the associated memory with
+ * both the Ta we are removing and the current student (if any).
  * Return 0 on success or 1 if this ta_name is not found in the list
  */
-int remove_ta(Ta **ta_list_ptr, char *ta_name)
+int remove_ta(Ta **ta_list_ptr, Student **stu_list_ptr, char *ta_name)
 {
     Ta *head = *ta_list_ptr;
     if (head == NULL)
@@ -183,6 +184,9 @@ int remove_ta(Ta **ta_list_ptr, char *ta_name)
     {
         // TA is at the head so special case
         *ta_list_ptr = head->next;
+        take_student(head, stu_list_ptr, NULL);
+        // memory for the student has been freed. Now free memory for the TA.
+        free(head->name);
         free(head);
         return 0;
     }
@@ -190,11 +194,19 @@ int remove_ta(Ta **ta_list_ptr, char *ta_name)
     {
         if (strcmp(head->next->name, ta_name) == 0)
         {
-            Ta *tofree = head->next;
+            Ta *ta_tofree = head->next;
+            //  We have found the ta to remove, but before we do that
+            //  we need to finish with the student and free the student.
+            //  You need to complete this helper function
+            take_student(ta_tofree, stu_list_ptr, NULL);
+
             head->next = head->next->next;
-            free(tofree);
+            // memory for the student has been freed. Now free memory for the TA.
+            free(ta_tofree->name);
+            free(ta_tofree);
             return 0;
         }
+        head = head->next;
     }
     // if we reach here, the ta_name was not in the list
     return 1;
@@ -262,14 +274,14 @@ char *print_currently_serving(Ta *ta_list)
     }
 
     char *buf;
-    DynamicString* ds = ds_new();
+    DynamicString *ds = ds_new();
     while (ta_list != NULL)
     {
         if (ta_list->current_student != NULL)
         {
             paasprintf(&buf, "TA: %s is serving %s.\r\n",
-                   ta_list->name,
-                   ta_list->current_student->name);
+                       ta_list->name,
+                       ta_list->current_student->name);
             ds_append(ds, buf);
         }
         else

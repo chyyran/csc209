@@ -217,7 +217,7 @@ Client *client_list_remove(ClientList *l, Client *c, Ta **ta_list, Student **stu
     }
     if (c->type == CLIENT_TA)
     {
-        remove_ta(ta_list, c->name);
+        remove_ta(ta_list, student_list, c->name);
     }
 
     // Clear the socket from the set to listen to,

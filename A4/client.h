@@ -430,10 +430,10 @@ ClientList *client_list_append(ClientList *l, Client *c);
  * the set of file descriptors to be selected on from 
  * client_list_select.
  * 
- * If free_later is true, then if the client is a student, the
- * student will not be freed.
+ * If the Client's state is S_INVALID, and it has a ClientType of 
+ * CLIENT_STUDENT, no attempt will be made to free the student.
  */ 
-Client *client_list_remove(ClientList *l, Client *c, Ta **ta_list, Student **student_list, int free_later);
+Client *client_list_remove(ClientList *l, Client *c, Ta **ta_list, Student **student_list);
 
 /**
  * Iterates through all Clients in the ClientList context,

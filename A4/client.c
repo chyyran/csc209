@@ -195,7 +195,7 @@ void route_around_client(ClientList *l, Client *c)
     }
 }
 
-Client *client_list_remove(ClientList *l, Client *c, Ta **ta_list, Student **student_list, int free_later)
+Client *client_list_remove(ClientList *l, Client *c, Ta **ta_list, Student **student_list)
 {
     printf("Disconnecting client %d\n", c->sock_fd);
 
@@ -211,7 +211,7 @@ Client *client_list_remove(ClientList *l, Client *c, Ta **ta_list, Student **stu
 
     // Free and remove from queue any
     // associated students or TAs.
-    if (c->type == CLIENT_STUDENT && !free_later)
+    if (c->type == CLIENT_STUDENT && c->state != S_INVALID)
     {
         give_up_waiting(student_list, c->name);
     }
@@ -245,21 +245,18 @@ Client *client_list_remove(ClientList *l, Client *c, Ta **ta_list, Student **stu
 
 ClientList *client_list_collect(ClientList *l, Ta **ta_list, Student **student_list)
 {
-    // We can't use iter here because removing the client will
-    // invalidate the iterator...
-    Client *c = l->root;
-    while (c && (c->next != NULL))
+
+    for (Client *c = client_iter_begin(l); c != NULL;)
     {
-        if (c->recv == RS_DISCONNECTED)
-        {
-            Client *next = c->next;
-            client_list_remove(l, c, ta_list, student_list, 0);
+        if (c ->recv == RS_DISCONNECTED) {
+            Client *next = client_iter_next(c);
+            client_list_remove(l, c, ta_list, student_list);
             c = next;
         } else {
-            c = c->next;
+            c = client_iter_next(c);
         }
-    }
 
+    }
     return l;
 }
 

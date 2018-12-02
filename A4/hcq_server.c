@@ -41,7 +41,7 @@ int process_username(Client *c)
     char *msg = client_ready_message(c);
     client_set_username(c, msg);
     printf("Set client username to: %s\n", msg);
-    
+
     // ask for the type next loop.
     client_set_state(c, S_PROMPT_TYPE);
     free(msg);
@@ -68,7 +68,7 @@ int process_type(Client *c)
     {
         client_set_type(c, CLIENT_STUDENT);
         printf("Set client type to Student\n");
-        
+
         client_set_state(c, S_PROMPT_MOTD);
     }
     else
@@ -79,7 +79,7 @@ int process_type(Client *c)
     return 0;
 }
 
-// Process the response form the client as a 
+// Process the response form the client as a
 // course code.
 int process_course(Client *c)
 {
@@ -90,12 +90,25 @@ int process_course(Client *c)
         if (!strcmp(courses[i].code, msg))
         {
             client_set_state(c, S_PROMPT_COMMANDS);
-            client_write(c, "You have been entered into the queue. While you wait, you can "
-                            "use the command stats to see which TAs are currently serving students.\r\n");
-            
+
             // Add the student to the student list now that we know what course
             // they want to queue for.
-            add_student(&stu_list, client_username(c), msg, courses, num_courses, c);
+            if (add_student(&stu_list, client_username(c), msg, courses, num_courses, c))
+            {
+                client_write(c, "You are already in the queue and cannot be added again for any course. Good-bye.\r\n");
+
+                // Setting the state to invalid will result in the student not being freed.
+                // which we want to avoid freeing the original student with the given name.
+                client_set_state(c, S_INVALID);
+                client_close(c);
+                free(msg);
+                return 0;
+            }
+            else
+            {
+                client_write(c, "You have been entered into the queue. While you wait, you can "
+                                "use the command stats to see which TAs are currently serving students.\r\n");
+            }
 
             free(msg);
             return 0;
@@ -103,7 +116,7 @@ int process_course(Client *c)
     }
     client_write(c, "This is not a valid course. Good-bye.\r\n");
 
-    // set the state to invalid, then mark the client as disconnected 
+    // set the state to invalid, then mark the client as disconnected
     client_set_state(c, S_INVALID);
     client_close(c);
     free(msg);
@@ -146,15 +159,11 @@ int process_command(ClientList *l, Client *c)
         {
             Client *st_client = ta->current_student->client;
             client_write(st_client, "Your turn to see the TA.\r\nWe are disconnecting you from the server now. Press Ctrl-C to close nc\r\n");
-            
-            // Although this will free the client belonging to the student, 
-            // c is not touched and thus client_iter_next(c) will work, and
-            // the iterator is still safe.
 
-            // additionally, we want to keep the student allocated until 
-            // it's freed by the hcq lifecycle functions, so indicate not
-            // to free the student when freeing the associated client.
-            client_list_remove(l, st_client, &ta_list, &stu_list, 1);
+            // Setting the state to invalid will result in the student not being freed.
+            // which we want.
+            client_set_state(st_client, S_INVALID);
+            client_close(st_client);
         }
     }
     else
@@ -222,7 +231,6 @@ int main(void)
         exit(1);
     }
 
-   
     // Initialize a list of clients to manage.
     // All socket operations should now take place within this ClientList context.
     ClientList *clients = client_list_new(sock_fd);
@@ -233,7 +241,7 @@ int main(void)
         client_list_collect(clients, &ta_list, &stu_list);
 
         // Send prompts for every client preparing to be ready for reading from.
-        // Notice that client_prep_read must be called after the prompt, 
+        // Notice that client_prep_read must be called after the prompt,
         // without this call the client would not be able to be read from.
 
         // See the documentation for client_prep_read in client.h
@@ -265,8 +273,8 @@ int main(void)
                     {
                     case CLIENT_TA:
                         client_write(c, "Valid commands for TA:\r\n\tstats\r\n\tnext\r\n\t(or use Ctrl-C to leave)\r\n");
-                        
-                        // If the client is a TA, we have all the information we need to add the TA to the 
+
+                        // If the client is a TA, we have all the information we need to add the TA to the
                         // TA list.
                         add_ta(&ta_list, client_username(c), c);
 

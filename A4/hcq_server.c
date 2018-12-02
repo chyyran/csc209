@@ -48,14 +48,14 @@ int process_type(Client *c)
 {
     char *msg = client_ready_message(c);
 
-    if (!strcmp("T", msg))
+    if (!strncmp("T", msg, 1))
     {
         client_set_type(c, CLIENT_TA);
         printf("Set client type to TA\n");
 
         client_set_state(c, S_PROMPT_MOTD);
     }
-    else if (!strcmp("S", msg))
+    else if (!strncmp("S", msg, 1))
     {
         client_set_type(c, CLIENT_STUDENT);
         printf("Set client type to Student\n");

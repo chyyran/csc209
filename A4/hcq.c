@@ -6,7 +6,6 @@
 #include "hcq.h"
 #include "dynstr.h"
 #include "panic.h"
-#define OUT_BUF_SIZE 1024
 
 /*
  * Return a pointer to the struct student with name stu_name
